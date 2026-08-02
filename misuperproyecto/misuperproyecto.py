@@ -1,33 +1,40 @@
-"""Welcome to Reflex! This file outlines the steps to create a basic app."""
-
 import reflex as rx
+from .components import navbar
+from .state import State
 
-from rxconfig import config
-
-
-class State(rx.State):
-    """The app state."""
-
+def card_materia(materia: dict) -> rx.Component:
+    return rx.card(
+        rx.vstack(
+            # Acceso profesional por clave de diccionario
+            rx.heading(materia["nombre"], size="4"),
+            rx.badge(materia["curso"], color_scheme="blue"),
+            rx.text(materia["descripcion"], size="2"),
+            rx.button(f"Comprar {materia['precio']}€", width="100%"),
+            spacing="2", align="start",
+        ),
+        width="18em",
+    )
 
 def index() -> rx.Component:
-    # Welcome Page (Index)
-    return rx.container(
-        rx.color_mode.button(position="top-right"),
-        rx.vstack(
-            rx.heading("Bienvenido a la web de Javichu", size="9"),
-            rx.text(
-                "Construyendo un futuro mejor",
-                rx.code(f"{config.app_name}/{config.app_name}.py"),
-                size="5",
+    return rx.vstack(
+        navbar(),
+        rx.container(
+            # Título dinámico compatible con Reflex
+            rx.heading("Apoyo Escolar para ", State.filtro_curso, margin_y="1em"),
+            rx.hstack(
+                rx.button("Todos", on_click=lambda: State.set_filtro("Todos")),
+                rx.button("4º ESO", on_click=lambda: State.set_filtro("4º ESO")),
+                rx.button("1º Bach", on_click=lambda: State.set_filtro("1º Bachillerato")),
+                rx.button("2º Bach", on_click=lambda: State.set_filtro("2º Bachillerato")),
+                spacing="4", margin_y="1em",
             ),
-            rx.link(
-                rx.button("Explora nuestro productos"),
-                color_scheme="blue",
-                on_click=rx.window_alert("Proximamente!")
+            rx.flex(
+                rx.foreach(State.paquetes_filtrados, card_materia),
+                wrap="wrap", spacing="4",
             ),
-            spacing="5",
-            justify="center",
-        ),
+            padding="2em",
+        )
     )
+
 app = rx.App()
 app.add_page(index)

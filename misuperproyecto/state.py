@@ -1,35 +1,22 @@
 import reflex as rx
-from .models import Materia # Importamos el molde que acabamos de crear
+from .models import Materia
 
 class State(rx.State):
-    # Lista profesional de paquetes basada en tu nicho
-    paquetes: list[Materia] = [
-        Materia(
-            nombre="Física Moderna", 
-            curso="2º Bachillerato", 
-            categoria="Física",
-            descripcion="Dominio de relatividad y cuántica para EBAU.", 
-            precio=45.0, 
-            icono="atom"
-        ),
-        Materia(
-            nombre="Álgebra Lineal", 
-            curso="1º Bachillerato", 
-            categoria="Matemáticas",
-            descripcion="Matrices, determinantes y sistemas de ecuaciones.", 
-            precio=35.0, 
-            icono="grid"
-        ),
-        Materia(
-            nombre="Iniciación a la Robótica", 
-            curso="4º ESO", 
-            categoria="Tecnología",
-            descripcion="Paquete práctico con Arduino y sensores.", 
-            precio=25.0, 
-            icono="cpu"
-        ),
-    ]
+    brand_name: str = "Mi Academia STEM"
+    filtro_curso: str = "Alumnos de instituto"
+    
+    # Convertimos los objetos a diccionarios al inicializar
+    paquetes: list[dict] = [
+        Materia("Física Moderna", "2º Bachillerato", "Física", "Dominio de EBAU.", 45.0, "atom").to_dict(),
+        Materia("Álgebra Lineal", "1º Bachillerato", "Matemáticas", "Matrices y cálculo.", 35.0, "grid").to_dict(),
+        Materia("Iniciación a la Robótica", "4º ESO", "Tecnología", "Arduino práctico.", 25.0, "cpu").to_dict(),
+        Materia("Qímica", "4º ESO", "Tecnología", "Arduino práctico.", 50.0, "cpu").to_dict(),    ]
 
-    def seleccionar_paquete(self, nombre: str):
-        # Esta función (evento) permitiría saber qué paquete quiere comprar el alumno
-        return rx.window_alert(f"Has seleccionado el paquete: {nombre}")
+    @rx.var
+    def paquetes_filtrados(self) -> list[dict]:
+        if self.filtro_curso == "Todos":
+            return self.paquetes
+        return [p for p in self.paquetes if p["curso"] == self.filtro_curso]
+
+    def set_filtro(self, curso: str):
+        self.filtro_curso = curso
