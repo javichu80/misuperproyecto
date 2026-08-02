@@ -23,6 +23,9 @@ def index() -> rx.Component:
             rx.heading("Apoyo Escolar para ", State.filtro_curso, margin_y="1em"),
             rx.hstack(
                 rx.button("Todos", on_click=lambda: State.set_filtro("Todos")),
+                rx.button("1º ESO", on_click=lambda: State.set_filtro("1º ESO")),
+                rx.button("2º ESO", on_click=lambda: State.set_filtro("2º ESO")),
+                rx.button("3º ESO", on_click=lambda: State.set_filtro("3º ESO")),
                 rx.button("4º ESO", on_click=lambda: State.set_filtro("4º ESO")),
                 rx.button("1º Bach", on_click=lambda: State.set_filtro("1º Bachillerato")),
                 rx.button("2º Bach", on_click=lambda: State.set_filtro("2º Bachillerato")),
