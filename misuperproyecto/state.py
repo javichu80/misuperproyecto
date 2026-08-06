@@ -2,6 +2,10 @@ import os
 import reflex as rx
 from .models import Materia
 import requests #Libreria para llamar  a APIs externas
+from dotenv import load_dotenv # 4 Importamos la herramienta para leer el .env
+
+# Esta línea es la que "inyecta" tu token de Hugging Face en la memoria del programa
+load_dotenv() 
 
 class State(rx.State):
     brand_name: str = "Mi Academia STEM"
@@ -40,6 +44,10 @@ class State(rx.State):
             ]
         
         return filtrados
+
+    def set_pregunta_tutor(self, valor: str):
+        """Actualiza la variable pregunta_tutor con el texto que escribe el alumno."""
+        self.pregunta_tutor = valor
     
     def set_filtro(self, valor: str):
         """ESTA ES LA FUNCIÓN QUE FALTABA: Actualiza el curso seleccionado."""
@@ -51,31 +59,41 @@ class State(rx.State):
 
     # --- LÓGICA DEL TUTOR STEM (HUGGING FACE API) ---
     def preguntar_tutor(self):
-        """Envía la duda del alumno a un modelo de código abierto gratuito."""
+        print(f"--- Iniciando consulta para: {self.pregunta_tutor} ---")
         if not self.pregunta_tutor:
             return
 
         self.esta_cargando = True
-        yield # Permite que Reflex actualice la UI para mostrar el estado de "Cargando" [48, Conversación previa]
+        yield # Muestra el spinner [7]
 
-        # Configuración de Hugging Face (Gratis y confiable)
-        # Nota: Debes obtener un token gratuito en huggingface.co
-        API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+        API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
         token = os.getenv("HUGGINGFACE_TOKEN")
-        headers = {"Authorization": "Bearer {token}"}
+        headers = {"Authorization": f"Bearer {token}"}
 
         payload = {
-            "inputs": f"<|system|>\nEres un tutor experto en STEM. Responde de forma breve y educativa.</s>\n<|user|>\n{self.pregunta_tutor}</s>\n<|assistant|>\n",
+            "inputs": f"<|system|>\nEres un tutor experto en STEM. Responde en español de forma breve.</s>\n<|user|>\n{self.pregunta_tutor}</s>\n<|assistant|>\n",
             "parameters": {"max_new_tokens": 500}
         }
 
         try:
-            # Petición saliente (funciona perfectamente en local sin hosting) [Conversación previa]
             response = requests.post(API_URL, headers=headers, json=payload)
             result = response.json()
-            # Extraemos solo la respuesta generada
-            self.respuesta_tutor = result['generated_text'].split("<|assistant|>\n")[-1]
+            
+            # --- PROCESAMIENTO SEGURO ---
+            if isinstance(result, list) and len(result) > 0:
+                # Accedemos al primer elemento  de la lista para obtener el diccionario
+                datos_ia = result 
+                texto_completo = datos_ia.get('generated_text', "")
+                self.respuesta_tutor = texto_completo.split("<|assistant|>\n")[-1]
+            elif isinstance(result, dict) and "error" in result:
+                self.respuesta_tutor = f"IA ocupada: {result.get('error')}"
+            else:
+                self.respuesta_tutor = "La IA devolvió un formato inesperado."
+                
         except Exception as e:
-            self.respuesta_tutor = f"Lo siento, el tutor está descansando. Error: {str(e)}"
+            # Capturamos el error real para que lo veas en pantalla
+            self.respuesta_tutor = f"Error de conexión o lógica: {str(e)}"
         
         self.esta_cargando = False
+        print(f"--- Respuesta procesada ---")
+        yield # Actualización final de la interfa

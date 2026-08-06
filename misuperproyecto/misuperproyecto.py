@@ -16,6 +16,31 @@ def index() -> rx.Component:
                 size="3",
                 margin_y="1em",
             ),
+            rx.input(
+                placeholder="Escribe tu duda aquí...",
+                on_change=State.set_pregunta_tutor, # Enchufado al setter
+                width="100%",
+            ),
+            rx.button(
+                "Preguntar", 
+                on_click=State.preguntar_tutor, # Llama a la lógica de la IA
+                loading=State.esta_cargando,   # Muestra el spinner visual
+            ),
+            rx.box(
+                rx.cond(
+                    State.respuesta_tutor != "", # Solo se muestra si hay respuesta
+                    rx.vstack(
+                        rx.text("🤖 Respuesta del Tutor:", weight="bold", color_scheme=COLOR_PRIMARIO),
+                        rx.text(State.respuesta_tutor),
+                        background=rx.color("slate", 3),
+                        padding="1.5em",
+                        border_radius="10px",
+                        width="100%",
+                        margin_top="1em",
+                    )
+                ),
+                width="100%",
+            ),
             rx.hstack(
                 # Botones inteligentes: cambian de color según el estado
                 rx.foreach(
