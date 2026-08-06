@@ -9,6 +9,13 @@ def index() -> rx.Component:
         rx.container(
             # Título dinámico compatible con Reflex
             rx.heading("Apoyo Escolar para ", State.filtro_curso, margin_y="1em"),
+            rx.input(
+                placeholder="¿Qué quieres aprender hoy? (ej: Física, Cálculo...)",
+                on_change=State.set_buscar, # Búsqueda reactiva mientras escribes
+                width="100%",
+                size="3",
+                margin_y="1em",
+            ),
             rx.hstack(
                 # Botones inteligentes: cambian de color según el estado
                 rx.foreach(
