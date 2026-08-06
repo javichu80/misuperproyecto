@@ -39,8 +39,8 @@ def card_materia(materia: dict) -> rx.Component:
                                                             materia["icono"] == "flask-conical", # <--- ¿Coincide este texto con state.py?
                                                             rx.icon(tag="flask-conical", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
                                                                 rx.cond(
-                                                                    materia["icono"] == "grid", # <--- ¿Coincide este texto con state.py?
-                                                                    rx.icon(tag="grid", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
+                                                                    materia["icono"] == "layout_grid", # <--- ¿Coincide este texto con state.py?
+                                                                    rx.icon(tag="layout-grid", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
                                                                     # ICONO POR DEFECTO: Siempre debe haber un cierre
                                                                     rx.icon(tag="book-open", size=30, color=rx.color(COLOR_PRIMARIO, 11))
                                                                 )       
@@ -65,8 +65,4 @@ def card_materia(materia: dict) -> rx.Component:
             align="start",
         ),
         style = estilo_base_tarjeta
-        #width="18em",
-        #padding="1.5em",
-        # Efecto visual: un borde sutil que resalta la tecnología
-        #border=f"1px solid {rx.color('iris', 5)}",
     ),
