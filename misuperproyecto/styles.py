@@ -1,23 +1,28 @@
 import reflex as rx
 
 # 1. Definición de la Paleta de Colores y Constantes
-COLOR_FONDO = "#0F1117"  # Un tono oscuro profundo para el modo "Dark STEM"
-COLOR_PRIMARIO = "yellow"
-COLOR_SECUNDARIO = "orange"
+COLOR_BLANCO_PURO = "#FFFFFF"
+COLOR_BRANDNAME = "#E5E6ED"
+COLOR_FONDO = "#394E8E"  # Un tono oscuro profundo para el modo "Dark STEM"
+COLOR_PRIMARIO = 'indigo' 
+COLOR_SECUNDARIO = "white"
 COLOR_TEXTO = rx.color("slate", 12)
 
 # 2. Estilos comunes reutilizables (DRY: Don't Repeat Yourself)
 estilo_base_tarjeta = {
-    "width": "18em",
+    "width": "100%", # Cambiado de 18em para que la grilla lo controle mejor
     "padding": "1.5em",
     "border_radius": "15px",
-    "transition": "all 0.2s ease-in-out",
+    "background": rx.color("slate", 2), # Fondo ligeramente distinto al de la web
+    "border": f"1px solid {rx.color('slate', 4)}", # Borde fino por defecto
+    "transition": "all 0.3s ease-in-out", # Transición más suave
     "_hover": {
-        "transform": "translateY(-5px)",
-        "box_shadow": f"10px 10px 20px {rx.color(COLOR_PRIMARIO, 3)}",
-    }
+        "transform": "translateY(-10px)", # Elevación un poco mayor
+        # EFECTO GLOW (Brillo):
+        "box_shadow": f"0px 10px 30px {rx.color(COLOR_PRIMARIO, 4)}",
+        "border": f"1px solid {rx.color(COLOR_PRIMARIO, 7)}",
+    },
 }
-
 estilo_boton_compra = {
     "width": "100%",
     "color_scheme": COLOR_PRIMARIO,

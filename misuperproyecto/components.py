@@ -1,15 +1,15 @@
 import reflex as rx
 from rxconfig import config
 from .state import State
-from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO
+from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO, COLOR_BRANDNAME
 
 # Asegúrate de que esta función esté presente
 def navbar() -> rx.Component:
     return rx.hstack(
-        rx.heading(State.brand_name, size="7"),
+        rx.heading(State.brand_name, size="7", color=COLOR_BRANDNAME),
         rx.spacer(),
-        rx.link("Inicio", href="/", color="green"),
-        rx.link("Productos", href="/productos", color="gray"),
+        rx.link("Inicio", href="/", color="white"),
+        rx.link("Productos", href="/productos", color="green"),
         # ... resto de estilos del navbar
     )
 
@@ -31,7 +31,7 @@ def card_materia(materia: dict) -> rx.Component:
                                     rx.icon(tag="magnet", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
                                         rx.cond(
                                             materia["icono"] == "cpu",
-                                            rx.icon(tag="cpu", size=30, color=rx.color("green", 11)),
+                                            rx.icon(tag="cpu", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
                                                 rx.cond(
                                                     materia["icono"] == "settings",
                                                     rx.icon(tag="settings", size=30, color=rx.color(COLOR_PRIMARIO, 11)),

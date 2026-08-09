@@ -1,7 +1,7 @@
 import reflex as rx
 from .components import navbar, card_materia
 from .state import State
-from .styles import COLOR_PRIMARIO, ESTILO_BOTON_FILTRO_BASE
+from .styles import COLOR_BLANCO_PURO, COLOR_PRIMARIO, ESTILO_BOTON_FILTRO_BASE, COLOR_FONDO, COLOR_SECUNDARIO
 
 def index() -> rx.Component:
     return rx.vstack(
@@ -12,7 +12,11 @@ def index() -> rx.Component:
                         size={"initial": "6", "sm": "8", "md": "9"}, # Más pequeño en móvil, gigante en PC
                         align="center",
                         width="100%",
-                        margin_y="0.5em"
+                        margin_y="0.5em",
+                        # EFECTO DE GRADIENTE EN TEXTO:
+                        background_image="linear-gradient(to right, #EEF750, #FF9000)",
+                        background_clip="text",
+                        color="transparent", # Necesario para que se vea el fondo de imagen (gradiente)
             ),
 
             rx.vstack(
@@ -67,8 +71,10 @@ def index() -> rx.Component:
                     lambda curso: rx.button(
                         curso,
                         on_click=lambda: State.set_filtro(curso),
+                        # Forzamos el color del texto a blanco puro
+                        color=COLOR_BLANCO_PURO, 
                         # Lógica condicional nativa para resaltar el curso activo [Conversación previa]
-                        color_scheme=rx.cond(State.filtro_curso == curso, COLOR_PRIMARIO, "gray"),
+                        color_scheme=rx.cond(State.filtro_curso == curso, COLOR_SECUNDARIO, "black"),
                         variant=rx.cond(State.filtro_curso == curso, "solid", "outline"),
                         style=ESTILO_BOTON_FILTRO_BASE,
                     )
@@ -93,6 +99,8 @@ def index() -> rx.Component:
             size="3", # Tamaño intermedio de Reflex para centrar el contenido
             padding_x=["1em", "2em", "4em"], # Margen lateral que crece con la pantalla
         ),
+        background=f"radial-gradient(circle at center, {COLOR_FONDO} 0%, #000000 100%)",
+        min_height="100vh", # Asegura que el fondo cubra toda la pantalla
         width="100",
         align_items="center",
             
