@@ -1,8 +1,7 @@
 import os
 import reflex as rx
 from .models import Materia
-import requests #Libreria para llamar  a APIs externas
-from dotenv import load_dotenv # 4 Importamos la herramienta para leer el .env
+from dotenv import load_dotenv 
 
 # Esta línea es la que "inyecta" tu token de Hugging Face en la memoria del programa
 load_dotenv() 
@@ -12,7 +11,7 @@ class State(rx.State):
     filtro_curso: str = "Todos"
     buscar_texto: str = "" # Variable necesaria para buscador reactivo 
 
-    #VARIABLES PARA EL TUTOR STEM CONO IA
+    # VARIABLES PARA EL TUTOR STEM COMO IA
     pregunta_tutor: str = ""
     respuesta_tutor: str = ""
     esta_cargando: bool = False
@@ -25,7 +24,8 @@ class State(rx.State):
         Materia("Química", "2º Bachillerato", "Física", "Dominio de EBAU.", 45.0, "flask-conical").to_dict(),
         Materia("Álgebra Lineal", "1º Bachillerato", "Matemáticas", "Matrices y cálculo.", 35.0, "pi").to_dict(),
         Materia("Robótica", "4º ESO", "Automatas", "MicroBIT.", 25.0, "bot").to_dict(),
-        Materia("Química", "3º ESO", "Tecnología", "Arduino práctico.", 50.0, "atom").to_dict(),    ]
+        Materia("Química", "3º ESO", "Tecnología", "Arduino práctico.", 50.0, "atom").to_dict(),    
+    ]
 
     @rx.var
     def paquetes_filtrados(self) -> list[dict]:
@@ -50,50 +50,73 @@ class State(rx.State):
         self.pregunta_tutor = valor
     
     def set_filtro(self, valor: str):
-        """ESTA ES LA FUNCIÓN QUE FALTABA: Actualiza el curso seleccionado."""
+        """Actualiza el curso seleccionado."""
         self.filtro_curso = valor
 
     def set_buscar(self, valor: str):
         """Maneja el evento de cambio en la barra de busqueda"""
         self.buscar_texto = valor
 
-    # --- LÓGICA DEL TUTOR STEM (HUGGING FACE API) ---
-    def preguntar_tutor(self):
+    # --- LÓGICA DEL TUTOR STEM OPTIMIZADA Y ASÍNCRONA ---
+    async def preguntar_tutor(self):
         print(f"--- Iniciando consulta para: {self.pregunta_tutor} ---")
         if not self.pregunta_tutor:
             return
 
         self.esta_cargando = True
-        yield # Muestra el spinner [7]
+        yield  # Muestra el spinner de carga de inmediato en Reflex
 
-        API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+        # Importamos las dependencias oficiales de Hugging Face de forma interna y asíncrona
+        from huggingface_hub import AsyncInferenceClient
+        import asyncio
+
         token = os.getenv("HUGGINGFACE_TOKEN")
-        headers = {"Authorization": f"Bearer {token}"}
-
-        payload = {
-            "inputs": f"<|system|>\nEres un tutor experto en STEM. Responde en español de forma breve.</s>\n<|user|>\n{self.pregunta_tutor}</s>\n<|assistant|>\n",
-            "parameters": {"max_new_tokens": 500}
-        }
 
         try:
-            response = requests.post(API_URL, headers=headers, json=payload)
-            result = response.json()
+            # Inicializamos el cliente asíncrono nativo para el modelo Mistral
+            client = AsyncInferenceClient(
+                model="deepseek-ai/DeepSeek-V4-Flash", 
+                token=token
+            )
             
-            # --- PROCESAMIENTO SEGURO ---
-            if isinstance(result, list) and len(result) > 0:
-                # Accedemos al primer elemento  de la lista para obtener el diccionario
-                datos_ia = result 
-                texto_completo = datos_ia.get('generated_text', "")
-                self.respuesta_tutor = texto_completo.split("<|assistant|>\n")[-1]
-            elif isinstance(result, dict) and "error" in result:
-                self.respuesta_tutor = f"IA ocupada: {result.get('error')}"
-            else:
-                self.respuesta_tutor = "La IA devolvió un formato inesperado."
-                
+            # Estructuramos el prompt utilizando el formato limpio de mensajes
+            messages = [
+                {
+                    "role": "user", 
+                    "content": f"Eres un tutor experto en STEM. Responde en español de forma breve. \n\n {self.pregunta_tutor}"
+                }
+            ]
+            
+            # Ejecutamos la llamada asíncrona con un tiempo límite de 15 segundos
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    messages=messages,
+                    max_tokens=500,
+                ),
+                timeout=15.0
+            )
+            
+            # El cliente limpia automáticamente las etiquetas [/INST] y nos da el texto puro
+            self.respuesta_tutor = response.choices[0].message.content
+
+        except asyncio.TimeoutError:
+            self.respuesta_tutor = "Error: El servidor de Hugging Face está tardando demasiado en responder."
         except Exception as e:
-            # Capturamos el error real para que lo veas en pantalla
-            self.respuesta_tutor = f"Error de conexión o lógica: {str(e)}"
-        
+            self.respuesta_tutor = f"Error de conexión: {str(e)}"
+
         self.esta_cargando = False
         print(f"--- Respuesta procesada ---")
-        yield # Actualización final de la interfa
+        yield  # Oculta el spinner y dibuja la respuesta en la pantalla
+
+
+
+
+
+
+
+
+
+
+
+
+
