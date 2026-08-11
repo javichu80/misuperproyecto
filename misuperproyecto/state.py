@@ -15,7 +15,55 @@ class State(rx.State):
     pregunta_tutor: str = ""
     respuesta_tutor: str = ""
     esta_cargando: bool = False
-    
+
+
+    # 2. Cambiamos la lista hardcodeada por una lista de objetos 'Materia' vacía
+    lista_materias: list[Materia] = []
+    # 3. Creamos la función para leer los datos de la base de datos (Persistencia)
+    def cargar_materias(self):
+        with rx.session() as session:
+            # 1. Consultamos si ya existen materias en el archivo reflex.db
+            materias_en_db = session.exec(Materia.select()).all()
+            
+            # 2. Si la tabla está vacía (primera vez), insertamos datos de prueba
+            if not materias_en_db:
+                print("Base de datos vacía. Insertando materias iniciales...")
+                iniciales = [
+                    Materia(nombre="Química: Enlaces", curso="2º Bachillerato", categoria="Química", 
+                            descripcion="Aprende sobre enlaces iónicos y covalentes.", precio=25, icono="flask-conical"),
+                    Materia(nombre="Física: Dinámica", curso="1º Bachillerato", categoria="Física", 
+                            descripcion="Estudio de las leyes de Newton.", precio=20, icono="magnet"),
+                    Materia(
+                        nombre="Biología Celular", 
+                        curso="4º ESO", 
+                        categoria="Biología", 
+                        descripcion="Descubre el funcionamiento de la vida a nivel microscópico.", 
+                        precio=15, 
+                        icono="dna" # Asegúrate de que este icono esté en tu condicional de components.py
+                    ),
+                    Materia(
+                        nombre="Álgebra Lineal", 
+                        curso="2º Bachillerato", 
+                        categoria="Matemáticas", 
+                        descripcion="Matrices, determinantes y sistemas de ecuaciones.", 
+                        precio=30, 
+                        icono="calculator"
+                    ),
+                ]
+                for m in iniciales:
+                    session.add(m) # Añadimos cada materia
+                session.commit() # Guardamos los cambios físicamente en el disco
+                
+                # Recargamos la lista visual con los datos recién creados
+                self.lista_materias = session.exec(Materia.select()).all()
+            else:
+                # 3. Si ya había datos, simplemente los asignamos a la variable visual
+                self.lista_materias = materias_en_db
+
+
+
+
+    '''
     # Convertimos los objetos a diccionarios al inicializar
     paquetes: list[dict] = [
         Materia("Mates Fáciles", "1º ESO", "Mates", "Dominio de EBAU.", 45.0, "calculator").to_dict(),
@@ -26,8 +74,27 @@ class State(rx.State):
         Materia("Robótica", "4º ESO", "Automatas", "MicroBIT.", 25.0, "bot").to_dict(),
         Materia("Química", "3º ESO", "Tecnología", "Arduino práctico.", 50.0, "atom").to_dict(),    
     ]
-
+'''
     @rx.var
+
+    def materias_filtradas(self) -> list[Materia]:
+        """Devuelve la lista de materias filtrada por curso y texto de búsqueda."""
+        materias = self.lista_materias
+        
+        if self.filtro_curso != "Todos":
+            materias = [m for m in materias if m.curso == self.filtro_curso]
+            
+        if self.buscar_texto != "":
+            materias = [
+                m for m in materias 
+                if self.buscar_texto.lower() in m.nombre.lower()
+            ]
+            
+        return materias
+
+
+
+    '''
     def paquetes_filtrados(self) -> list[dict]:
         filtrados = self.paquetes
         
@@ -43,7 +110,11 @@ class State(rx.State):
                 or self.buscar_texto.lower() in p["descripcion"].lower()
             ]
         
-        return filtrados
+        return filtrados '''
+
+
+
+
 
     def set_pregunta_tutor(self, valor: str):
         """Actualiza la variable pregunta_tutor con el texto que escribe el alumno."""

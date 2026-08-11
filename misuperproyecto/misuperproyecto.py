@@ -86,7 +86,7 @@ def index() -> rx.Component:
                 justify="center", # Centra los botones en cualquier pantalla
             ),
             rx.grid(
-                rx.foreach(State.paquetes_filtrados, card_materia),
+                rx.foreach(State.materias_filtradas, card_materia),
                 # Usamos un diccionario para definir la responsividad:
                 # "initial" (móvil): 1 columna
                 # "sm" (tablet): 2 columnas
@@ -106,4 +106,4 @@ def index() -> rx.Component:
             
     )
 app = rx.App()
-app.add_page(index)
+app.add_page(index, on_load=State.cargar_materias)# <-- Llama a la función al cargar
