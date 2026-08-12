@@ -1,5 +1,5 @@
 import reflex as rx
-from .components import navbar, card_materia
+from .components import navbar, card_materia, formulario_materia
 from .state import State
 from .styles import COLOR_BLANCO_PURO, COLOR_PRIMARIO, ESTILO_BOTON_FILTRO_BASE, COLOR_FONDO, COLOR_SECUNDARIO
 
@@ -95,6 +95,23 @@ def index() -> rx.Component:
                 spacing="4",
                 width="100%",
             ),
+
+            rx.hstack(
+                # Lado izquierdo: El formulario
+                rx.box(formulario_materia(), width="30%"),
+                # Lado derecho: Las tarjetas existentes
+                rx.box(
+                    rx.flex(
+                        rx.foreach(State.materias_filtradas, card_materia),
+                        flex_wrap="wrap",
+                        spacing="4",
+                    ),
+                    width="70%"
+                ),
+                width="100%",
+                spacing="5",
+            ),
+
             # Hacemos que el contenedor no sea rígido
             size="3", # Tamaño intermedio de Reflex para centrar el contenido
             padding_x=["1em", "2em", "4em"], # Margen lateral que crece con la pantalla
