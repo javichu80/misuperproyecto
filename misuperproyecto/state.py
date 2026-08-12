@@ -30,6 +30,7 @@ class State(rx.State):
     respuesta_tutor: str = ""
     esta_cargando: bool = False 
 
+  
     def cargar_materias(self):
         """Consulta la base de datos y la puebla si está vacía."""
         with rx.session() as session:
@@ -42,10 +43,10 @@ class State(rx.State):
                 for m in iniciales:
                     session.add(m)
                 session.commit()
-                self.lista_materias = session.exec(Materia.select()).all()
+                self.lista_materias = session.exec(select(Materia)).all()
             else:
                 self.lista_materias = materias_db
-
+    
     def guardar_materia(self):
         """Guarda la materia del formulario."""
         with rx.session() as session:
@@ -85,6 +86,9 @@ class State(rx.State):
         """Maneja el evento de cambio en la barra de busqueda"""
         self.buscar_texto = valor
 
+
+    #FUNCIONES PARA CREAR Y BORRAR TARJETAS
+
     def set_nuevo_nombre(self, valor: str):
         self.nuevo_nombre = valor
 
@@ -102,6 +106,18 @@ class State(rx.State):
         except ValueError:
             # Si el texto está vacío o no es un número, ponemos 0 para evitar el error [8, 9]
             self.nuevo_precio = 0
+
+    def borrar_materia(self, id: int):
+        """Elimina una materia por su ID y refresca la lista."""
+        with rx.session() as session:
+            # Buscamos la materia exacta en la base de datos usando su ID
+            materia = session.get(Materia, id)
+            if materia:
+                session.delete(materia)
+                session.commit()
+        # Llamamos a cargar_materias para que la lista de la web se actualice al instante
+        self.cargar_materias() 
+
     
     # --- LÓGICA DEL TUTOR STEM OPTIMIZADA Y ASÍNCRONA ---
     async def preguntar_tutor(self):

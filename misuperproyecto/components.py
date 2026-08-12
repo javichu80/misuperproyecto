@@ -51,7 +51,15 @@ def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
                 "Comprar ", materia.precio, "€", 
                 style=estilo_boton_compra
             ),
-            
+            # BOTÓN DE ELIMINAR (Nuevo)
+            rx.button(
+                rx.icon(tag="trash-2"), # Icono de papelera
+                on_click=lambda: State.borrar_materia(materia.id),
+                color_scheme="red",
+                variant="soft",
+            ),
+            width="100%",
+            justify="between",
             spacing="1",
             align="start",
         ),
