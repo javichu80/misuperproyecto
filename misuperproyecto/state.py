@@ -30,6 +30,21 @@ class State(rx.State):
     historial_chat: list[tuple[str,str]]=[]
     esta_cargando: bool = False 
 
+    esta_autenticado: bool = False
+    password_input: str = ""
+
+    def login(self):
+        """Verificación simple de credenciales."""
+        # En una app real, esto consultaría una base de datos de usuarios
+        if self.password_input == "admin123": # Cambia esta clave
+            self.esta_autenticado = True
+            self.password_input = "" # Limpiamos el campo
+        else:
+            return rx.window_alert("Contraseña incorrecta")
+
+    def logout(self):
+        """Cierra la sesión del administrador."""
+        self.esta_autenticado = False
   
     def cargar_materias(self):
         """Consulta la base de datos y la puebla si está vacía."""
@@ -117,6 +132,18 @@ class State(rx.State):
                 session.commit()
         # Llamamos a cargar_materias para que la lista de la web se actualice al instante
         self.cargar_materias() 
+
+
+    def login(self):
+        if self.password_input == "admin123":
+            self.esta_autenticado = True
+            self.password_input = ""
+        else:
+            return rx.window_alert("Contraseña incorrecta")
+
+    # AÑADE ESTO MANUALMENTE SI FALLA EL AUTOMÁTICO
+    def set_password_input(self, valor: str):
+        self.password_input = valor
 
     
     # --- LÓGICA DEL TUTOR STEM OPTIMIZADA Y ASÍNCRONA ---

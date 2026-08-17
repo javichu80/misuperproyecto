@@ -1,5 +1,5 @@
 import reflex as rx
-from .components import navbar, card_materia, formulario_materia, interfaz_tutor_ia
+from .components import navbar, card_materia, formulario_materia, interfaz_tutor_ia, login_admin
 from .state import State
 from .styles import COLOR_BLANCO_PURO, COLOR_PRIMARIO, ESTILO_BOTON_FILTRO_BASE, COLOR_FONDO, COLOR_SECUNDARIO
 
@@ -57,19 +57,40 @@ def index() -> rx.Component:
 
 
             rx.hstack(
-                # Lado izquierdo: El formulario
-                rx.box(formulario_materia(), width="30%"),
-                # Lado derecho: Las tarjetas existentes
+                # Lado izquierdo PROTEGIDO
+                rx.box(
+                    rx.cond(
+                        State.esta_autenticado,
+                        # SI ESTÁ LOGUEADO: Muestra gestión
+                        rx.vstack(
+                            formulario_materia(),
+                            rx.button(
+                                "Cerrar Sesión", 
+                                on_click=State.logout, 
+                                variant="ghost", 
+                                color_scheme="red",
+                                margin_top="1em"
+                            ),
+                            width="100%"
+                        ),
+                        # SI NO ESTÁ LOGUEADO: Muestra login
+                        login_admin()
+                    ),
+                    width="30%"
+                ),
+                
+                # Lado derecho: Las tarjetas (Visibles para todos)
                 rx.box(
                     rx.grid(
                         rx.foreach(State.materias_filtradas, card_materia),
-                        flex_wrap="wrap",
+                        columns={"initial": "1", "sm": "1", "md": "2"}, 
                         spacing="4",
                     ),
                     width="70%"
                 ),
                 width="100%",
                 spacing="5",
+                align_items="start",
             ),
 
             rx.divider(margin_y="3em"), # Separador visual profesional

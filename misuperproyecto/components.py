@@ -182,3 +182,26 @@ def formulario_materia() -> rx.Component:
         spacing="3",
         width="100%",
     )
+
+def login_admin() -> rx.Component:
+    """Pequeño formulario para autenticarse."""
+    return rx.vstack(
+        rx.heading("Acceso Administrador", size="4", color="white"),
+        rx.input(
+            placeholder="Contraseña",
+            type="password",
+            on_change=State.set_password_input,
+            value=State.password_input,
+            width="100%",
+        ),
+        rx.button(
+            "Entrar",
+            on_click=State.login,
+            color_scheme="indigo",
+            width="100%",
+        ),
+        padding="1.5em",
+        border=f"1px solid {rx.color('slate', 5)}",
+        border_radius="10px",
+        spacing="3",
+    )
