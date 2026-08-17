@@ -1,5 +1,5 @@
 import reflex as rx
-from .components import navbar, card_materia, formulario_materia
+from .components import navbar, card_materia, formulario_materia, interfaz_tutor_ia
 from .state import State
 from .styles import COLOR_BLANCO_PURO, COLOR_PRIMARIO, ESTILO_BOTON_FILTRO_BASE, COLOR_FONDO, COLOR_SECUNDARIO
 
@@ -27,43 +27,12 @@ def index() -> rx.Component:
                     size="3",
                     margin_y="1em",
                 ),
-                rx.input(
-                    placeholder="Escribe tu duda aquí...",
-                    on_change=State.set_pregunta_tutor, # Enchufado al setter
-                    width="100%",
-                    size="3"
-                ),
-                rx.button(
-                    "Preguntar", 
-                    on_click=State.preguntar_tutor, # Llama a la lógica de la IA
-                    loading=State.esta_cargando,   # Muestra el spinner visual
-                    width=["100%", "auto"], # Ocupa todo en móvil, tamaño normal en PC
-                    size="3",
-                    color_scheme=COLOR_PRIMARIO,
-                    margin_y="1em",
-                ),
+                
                 spacing="3",
                 width="100%", # Se estrecha en PC para no verse tan largo
                 align_items="center",
             ),
-            rx.box(
-                rx.cond(
-                    State.respuesta_tutor != "", # Solo se muestra si hay respuesta
-                    rx.vstack(
-                        rx.text("🤖 Respuesta del Tutor:", weight="bold", color_scheme=COLOR_PRIMARIO),
-                        rx.markdown(State.respuesta_tutor),
-                        background=rx.color("slate", 3),
-                        padding="1.5em",
-                        border_radius="10px",
-                        width="100%",
-                        max_height="300px",  # Altura máxima antes de mostrar scroll [3]
-                        overflow_y="auto",   # Muestra la barra de desplazamiento solo si es necesario [1, 2]
-                        margin_top="1em",
-                        align_items="start", # Alinea el texto a la izquierda
-                    )
-                ),
-                width="100%" # Mismo ancho que los inputs para coherencia
-            ),
+            
             rx.flex(
                 # Botones inteligentes: cambian de color según el estado
                 rx.foreach(
@@ -101,6 +70,25 @@ def index() -> rx.Component:
                 ),
                 width="100%",
                 spacing="5",
+            ),
+
+            rx.divider(margin_y="3em"), # Separador visual profesional
+
+            rx.vstack(
+                rx.heading("Asistencia Inteligente STEM 24/7", size="7", align="center", color="white"),
+                rx.text("Pregunta cualquier duda sobre tus cursos y el tutor IA te responderá al instante.", align="center", opacity="0.8",color="white"),
+                
+                # LLAMADA ÚNICA AL NUEVO COMPONENTE
+                # Este componente contiene internamente el historial, el input y el botón
+                rx.box(
+                    interfaz_tutor_ia(), 
+                    width="100%",
+                    max_width="900px", # Ancho ideal para lectura
+                    margin_top="1.5em",
+                ),
+                width="100%",
+                spacing="4",
+                padding_y="2em",
             ),
 
             # Hacemos que el contenedor no sea rígido

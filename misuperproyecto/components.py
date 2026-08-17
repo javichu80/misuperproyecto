@@ -13,6 +13,82 @@ def navbar() -> rx.Component:
         rx.link("Productos", href="/productos", color="green"),
         # ... resto de estilos del navbar
     )
+
+# --- 2. COMPONENTES DEL TUTOR IA (EDUCACIÓN 3.0) ---
+def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
+    """Corrige el error de la imagenIA separando pregunta y respuesta."""
+    return rx.vstack(
+        # 1. BURBUJA DEL ALUMNO (Índice 0: lo que tú escribes)
+        rx.box(
+            # Usamos interaccion para sacar solo tu pregunta
+            rx.text(interaccion[0], color="white", weight="medium"),
+            background_color="#6010DE", 
+            padding="0.8em 1.2em",
+            border_radius="18px 18px 0px 18px",
+            align_self="end", # Se pega a la derecha
+            max_width="80%",
+        ),
+        
+        # 2. BURBUJA DEL TUTOR IA (Índice 1: lo que responde la IA)
+        rx.box(
+            # IMPORTANTE: rx.markdown interpreta las negritas y fórmulas de la imagen
+            rx.markdown(
+                interaccion[1],
+                # ESTA LÍNEA ES LA CLAVE PARA LAS FÓRMULAS:
+                extensions=["latex"], 
+                component_props={
+                    "p": {"margin_bottom": "1em", "line_height": "1.6"},
+                    "ul": {"padding_left": "1.5em"},
+                }
+            ),
+            background_color="#F3F4F6", # Gris claro para diferenciar
+            padding="1em 1.5em",
+            border_radius="18px 18px 18px 0px",
+            align_self="start", # Se pega a la izquierda
+            max_width="90%",
+            color="slate",
+            border="1px solid #E5E7EB",
+        ),
+        spacing="3", # Crea el espacio vertical que falta en tu imagen
+        width="100%",
+        margin_y="1em",
+    )
+
+def interfaz_tutor_ia() -> rx.Component:
+    """Cuadro de chat dinámico con historial."""
+    return rx.vstack(
+        rx.heading("Tutor STEM Inteligente", size="4", color="white"),
+        rx.scroll_area(
+            rx.vstack(
+                rx.foreach(State.historial_chat, mensaje_chat),
+                width="100%",
+                spacing="4",
+            ),
+            height="350px",
+            width="100%",
+            padding="1em",
+            border="1px solid #E5E7EB",
+            border_radius="10px",
+        ),
+        rx.hstack(
+            rx.input(
+                placeholder="Pregunta tu duda...",
+                value=State.pregunta_tutor,
+                on_change=State.set_pregunta_tutor,
+                width="100%",
+            ),
+            rx.button(
+                rx.cond(State.esta_cargando, rx.spinner(size="1"), "Enviar"),
+                on_click=State.preguntar_tutor, # Llamada al backend asíncrono
+                disabled=State.esta_cargando,
+            ),
+            width="100%",
+        ),
+        width="100%",
+        spacing="3",
+        padding="1em",
+    )
+
 def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
     return rx.card(
         rx.vstack(
@@ -69,7 +145,7 @@ def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
 
 def formulario_materia() -> rx.Component:
     return rx.vstack(
-        rx.heading("Añadir Nueva Materia", size="5"),
+        rx.heading("Añadir Nueva Materia", size="5", color="white"),
         rx.input(
             placeholder="Nombre de la materia (ej: Álgebra)",
             on_change=State.set_nuevo_nombre,

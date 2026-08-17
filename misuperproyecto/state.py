@@ -27,7 +27,7 @@ class State(rx.State):
 
     # Variables para la IA
     pregunta_tutor: str = ""
-    respuesta_tutor: str = ""
+    historial_chat: list[tuple[str,str]]=[]
     esta_cargando: bool = False 
 
   
@@ -125,31 +125,40 @@ class State(rx.State):
         if not self.pregunta_tutor:
             return
 
+        # Guardamos la pregunta actual en una variable local antes de limpiar el input
+        pregunta_actual = self.pregunta_tutor
         self.esta_cargando = True
-        yield  # Muestra el spinner de carga de inmediato en Reflex
+        yield  # Actualiza la UI para mostrar el spinner
 
-        # Importamos las dependencias oficiales de Hugging Face de forma interna y asíncrona
         from huggingface_hub import AsyncInferenceClient
         import asyncio
+        import os
 
         token = os.getenv("HUGGINGFACE_TOKEN")
 
         try:
-            # Inicializamos el cliente asíncrono nativo para el modelo Mistral
             client = AsyncInferenceClient(
                 model="deepseek-ai/DeepSeek-V4-Flash", 
                 token=token
             )
             
-            # Estructuramos el prompt utilizando el formato limpio de mensajes
             messages = [
                 {
                     "role": "user", 
-                    "content": f"Eres un tutor experto en STEM. Responde en español de forma breve. \n\n {self.pregunta_tutor}"
+                    "content": f"""Eres un tutor experto en STEM para Educación 3.0. 
+                    Responde siempre usando formato Markdown profesional.
+                    INSTRUCCIONES DE FORMATO:
+                    1. Usa títulos (##) para separar secciones.
+                    2. Usa negritas para conceptos clave.
+                    3. Para las fórmulas matemáticas, usa NOTACIÓN LATEX:
+                    - Si la fórmula va en su propia línea, ponla entre dobles dólares: $$ fórmula $$.
+                    - Si va dentro de una frase, usa un solo dólar: $ fórmula $.
+                    4. Deja siempre una línea en blanco entre párrafos.
+
+                    PREGUNTA DEL ALUMNO: \n\n {pregunta_actual}"""
                 }
             ]
             
-            # Ejecutamos la llamada asíncrona con un tiempo límite de 15 segundos
             response = await asyncio.wait_for(
                 client.chat.completions.create(
                     messages=messages,
@@ -158,20 +167,23 @@ class State(rx.State):
                 timeout=15.0
             )
             
-            # El cliente limpia automáticamente las etiquetas [/INST] y nos da el texto puro
-            self.respuesta_tutor = response.choices[0].message.content
+            # 1. Capturamos la respuesta en una variable local
+            respuesta_ia = response.choices[0].message.content
 
         except asyncio.TimeoutError:
-            self.respuesta_tutor = "Error: El servidor de Hugging Face está tardando demasiado en responder."
+            respuesta_ia = "Error: El servidor de Hugging Face está tardando demasiado en responder."
         except Exception as e:
-            self.respuesta_tutor = f"Error de conexión: {str(e)}"
+            respuesta_ia = f"Error de conexión: {str(e)}"
 
+        # 2. AÑADIMOS LA INTERACCIÓN AL HISTORIAL (El cambio más importante)
+        # Esto añade una tupla (pregunta, respuesta) a tu lista
+        self.historial_chat.append((pregunta_actual, respuesta_ia))
+
+        # 3. LIMPIAMOS EL INPUT para la siguiente pregunta
+        self.pregunta_tutor = ""
+        
         self.esta_cargando = False
-        print(f"--- Respuesta procesada ---")
-        yield  # Oculta el spinner y dibuja la respuesta en la pantalla
-
-
-
-
+        print(f"--- Respuesta añadida al historial ---")
+        yield 
 
 
