@@ -37,8 +37,8 @@ class State(rx.State):
             materias_db = session.exec(select(Materia)).all()
             if not materias_db:
                 iniciales = [
-                    Materia(nombre="Física Moderna", curso="2º Bachillerato", categoria="Física", 
-                            descripcion="Leyes de Newton.", precio=20, icono="atom"),
+                    Materia(nombre="Próximamente NUEVAS MATERIAS", curso="Diferentes cursos", categoria="Diversas categorías", 
+                            descripcion="Descúbrelas.", precio=0, icono="atom"),
                 ]
                 for m in iniciales:
                     session.add(m)

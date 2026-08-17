@@ -100,6 +100,7 @@ def formulario_materia() -> rx.Component:
             width="100%",
         ),
         padding="2em",
+        margin_top= "15px",
         border=f"1px solid {rx.color('slate', 5)}",
         border_radius="15px",
         spacing="3",

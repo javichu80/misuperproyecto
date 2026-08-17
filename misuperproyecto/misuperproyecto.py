@@ -85,23 +85,14 @@ def index() -> rx.Component:
                 flex_wrap="wrap", # <--- CLAVE: Si no caben, saltan de línea automáticamente
                 justify="center", # Centra los botones en cualquier pantalla
             ),
-            rx.grid(
-                rx.foreach(State.materias_filtradas, card_materia),
-                # Usamos un diccionario para definir la responsividad:
-                # "initial" (móvil): 1 columna
-                # "sm" (tablet): 2 columnas
-                # "md" (PC): 3 columnas
-                columns={"initial": "1", "sm": "2", "md": "3"}, 
-                spacing="4",
-                width="100%",
-            ),
+
 
             rx.hstack(
                 # Lado izquierdo: El formulario
                 rx.box(formulario_materia(), width="30%"),
                 # Lado derecho: Las tarjetas existentes
                 rx.box(
-                    rx.flex(
+                    rx.grid(
                         rx.foreach(State.materias_filtradas, card_materia),
                         flex_wrap="wrap",
                         spacing="4",
