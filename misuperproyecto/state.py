@@ -135,7 +135,7 @@ class State(rx.State):
 
 
     def login(self):
-        if self.password_input == "admin123":
+        if self.password_input == "Cursillos":
             self.esta_autenticado = True
             self.password_input = ""
         else:
