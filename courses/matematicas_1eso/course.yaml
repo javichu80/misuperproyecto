@@ -1,0 +1,6 @@
+course_id: "matematicas_1eso"
+title: "Matemáticas 1º ESO"
+description: "Curso completo de Matemáticas para el primer año de Educación Secundaria Obligatoria."
+topics:
+  - topic_id: "tema_01_numeros_naturales"
+    title: "Tema 1: Los números naturales"

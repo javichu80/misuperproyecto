@@ -1,5 +1,5 @@
 import reflex as rx
-from .components import navbar, card_materia, formulario_materia, interfaz_tutor_ia, login_admin
+from .components import navbar, card_materia, formulario_materia, interfaz_tutor_ia, login_admin, sidebar_lecciones
 from .state import State
 from .styles import (
     COLOR_BLANCO_PURO, 
@@ -15,6 +15,66 @@ def index() -> rx.Component:
         # --- VISTA 1: MODO ADMINISTRADOR (Academia Completa) ---
         rx.vstack(
             navbar(),
+
+            # SECCIÓN SUPERIOR: "VISTA DE ESTUDIO" (Novedad del Blueprint)
+            rx.container(
+                rx.heading(
+                    "Apoyo Escolar para ", State.filtro_curso, 
+                    size={"initial": "6", "sm": "8", "md": "9"},
+                    align="center",
+                    width="100%",
+                    margin_y="0.5em",
+                    background_image="linear-gradient(to right, #FF8C00, #ED1C24)",
+                    background_clip="text",
+                    color="transparent",
+                ),
+
+                # Contenedor Flexible Horizontal de Estudio
+                rx.flex(
+                    # 1. Menú lateral (Sidebar) - 25% de ancho
+                    rx.box(
+                        sidebar_lecciones(),
+                        width=["100%", "100%", "25%"],
+                        margin_bottom=["1.5em", "1.5em", "0em"],
+                    ),
+                    
+                    # 2. Visor de Teoría Markdown - 50% de ancho
+                    rx.box(
+                        rx.scroll_area(
+                            # Renderizado nativo del archivo Markdown de la lección seleccionada
+                            rx.markdown(
+                                State.lesson_content,
+                                color="white",
+                            ),
+                            height="60vh",
+                            scrollbars="vertical",
+                        ),
+                        padding="1.5em",
+                        background=rx.color("slate", 12),
+                        border_radius="15px",
+                        border=f"1px solid {rx.color('slate', 4)}",
+                        width=["100%", "100%", "50%"],
+                        margin_x=["0em", "0em", "1em"],
+                    ),
+
+                    # 3. Tutor IA Contextualizado - 25% de ancho
+                    rx.box(
+                        interfaz_tutor_ia(),
+                        width=["100%", "100%", "25%"],
+                    ),
+                    
+                    width="100%",
+                    flex_wrap="wrap",  # Responsivo para móviles
+                    align_items="stretch",
+                ),
+                
+                size="3",
+                padding_x=["1em", "2em", "4em"],
+                margin_bottom="3em",
+            ),
+
+            rx.divider(color_scheme="gray"),
+
             rx.container(
                 # 1. TÍTULO DINÁMICO
                 rx.heading(
@@ -132,5 +192,5 @@ def index() -> rx.Component:
     )
 
 app = rx.App()
-app.add_page(index, on_load=State.cargar_materias)
+app.add_page(index, on_load=State.iniciar_pagina)
 

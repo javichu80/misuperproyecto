@@ -1,0 +1,9 @@
+topic_id: "tema_01_numeros_naturales"
+lessons:
+  - lesson_id: "lesson_01_sistemas_numeracion"
+    title: "1. Sistemas de numeración"
+    file: "lesson_01.md"
+  - lesson_id: "lesson_02_sistema_decimal"
+    title: "2. El sistema decimal"
+    file: "lesson_02.md"
+  # ... (aquí añadirás las lecciones de la 3 a la 9)

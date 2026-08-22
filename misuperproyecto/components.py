@@ -221,3 +221,38 @@ def login_admin() -> rx.Component:
         height="100vh",
         background=f"radial-gradient(circle at top, {rx.color('indigo', 3)}, {rx.color('slate', 2)})",
     )
+
+
+def sidebar_lecciones() -> rx.Component:
+    """Sidebar que muestra el índice interactivo del Tema 1."""
+    print("SIDEBAR LESSONS:", State.lessons_list)
+    return rx.vstack(
+        rx.heading("Tema 1: Números Naturales", size="5", color="white", margin_bottom="1.5em"),
+        rx.vstack(
+            rx.foreach(
+                State.lessons_list,
+                lambda lesson: rx.button(
+                    lesson[ 1 ],  # <--- CLAVE 1: 'lesson[ 1 ]' extrae el Título ("1. Sistemas de numeración")
+                    on_click=lambda: State.cargar_contenido_leccion(lesson[ 0 ]),  # <--- CLAVE 2: 'lesson[ 0 ]' extrae el ID de la lección
+                    width="100%",
+                    # CLAVE 3: Comparamos el ID con el seleccionado para iluminar el botón activo
+                    color_scheme=rx.cond(State.selected_lesson == lesson[ 0 ], "indigo", "slate"),
+                    variant=rx.cond(State.selected_lesson == lesson[ 0 ], "solid", "ghost"),
+                    style={
+                        "justify-content": "start",
+                        "white-space": "normal",
+                        "text-align": "left",
+                        "padding_y": "1.5em",
+                        "cursor": "pointer"
+                    }
+                )
+            ),
+            width="100%",
+            spacing="2",
+        ),
+        width="100%",
+        padding="1.5em",
+        border_right=f"1px solid {rx.color('slate', 4)}",
+        height="100%",
+    )
+

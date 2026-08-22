@@ -1,5 +1,6 @@
 import os
 import reflex as rx
+import yaml
 from .models import Materia
 from dotenv import load_dotenv
 from sqlmodel import select
@@ -29,6 +30,81 @@ class State(rx.State):
     pregunta_tutor: str = ""
     historial_chat: list[tuple[str,str]]=[]
     esta_cargando: bool = False 
+
+ # --- NUEVO: Estado de Navegación del Blueprint ---
+    selected_course: str = "matematicas_1eso"
+    selected_topic: str = "tema_01_numeros_naturales"
+    selected_lesson: str = "lesson_01_sistemas_numeracion"
+    lesson_content: str = ""
+    
+    # Guardamos como lista de listas [lesson_id, title] para evitar fallos de bindings
+    lessons_list: list[list[str]] = []
+
+    def cargar_estructura_lecciones(self):
+        """Lee metadata.yaml y carga la lista de lecciones del Tema 1 en el Estado."""
+
+        metadata_path = (
+            f"courses/{self.selected_course}/"
+            f"{self.selected_topic}/metadata.yaml"
+        )
+
+        # DEBUG
+        print("METADATA:", metadata_path)
+        print("EXISTE:", os.path.exists(metadata_path))
+
+        if os.path.exists(metadata_path):
+            try:
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                    lessons = data.get("lessons", [])
+
+                    self.lessons_list = [
+                        [l.get("lesson_id"), l.get("title")]
+                        for l in lessons
+                    ]
+
+                    # DEBUG
+                    print("LESSONS:", self.lessons_list)
+
+            except Exception as e:
+                print(f"Error cargando metadatos: {e}")
+
+        self.cargar_contenido_leccion(self.selected_lesson)
+
+    def cargar_contenido_leccion(self, lesson_id: str):
+        """Cambia la lección activa y lee el archivo Markdown correspondiente."""
+        self.selected_lesson = lesson_id
+        
+        # Buscamos el nombre del archivo .md asociado en metadata.yaml
+        lesson_file = "lesson_01.md"  # valor por defecto de seguridad
+        metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
+        
+        if os.path.exists(metadata_path):
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                for l in data.get("lessons", []):
+                    if l.get("lesson_id") == lesson_id:
+                        lesson_file = l.get("file")
+                        break
+
+        # Leemos el archivo Markdown
+        file_path = f"courses/{self.selected_course}/{self.selected_topic}/{lesson_file}"
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                self.lesson_content = f.read()
+        else:
+            self.lesson_content = f"# Error\nNo se pudo encontrar el archivo de teoría: `{lesson_file}`."
+
+    # --- NUEVA FUNCIÓN ON_LOAD COMBINADA ---
+    def iniciar_pagina(self):
+        """Inicializa tanto la base de datos de materias como el cargador de Markdown."""
+        self.cargar_materias()  # Tu función existente de carga de DB
+        self.cargar_estructura_lecciones()  # Nuestra nueva función de carga de archivos
+
+
+
+
 
     esta_autenticado: bool = False
     # ¡HEMOS ELIMINADO 'password_input' de aquí para evitar colisiones!
