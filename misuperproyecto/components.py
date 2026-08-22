@@ -185,38 +185,39 @@ def formulario_materia() -> rx.Component:
 
 def login_admin() -> rx.Component:
     """Pantalla de acceso exclusivo centrada y a pantalla completa."""
-    return rx.center( # <--- CAMBIO 1: Añadimos un contenedor de centrado total
-        rx.vstack(
-            rx.heading("Panel de Control STEM", size="7", margin_bottom="1em", color="black"),
-            rx.box( # <--- CAMBIO 2: Metemos el formulario en una "tarjeta" visual
-                rx.vstack(
-                    rx.text("Introduce tus credenciales para gestionar los contenidos", size="2", opacity="0.8", color="slate"),
-                    rx.input(
-                        placeholder="Contraseña",
-                        type="password",
-                        on_change=State.set_password_input,
-                        value=State.password_input,
-                        width="100%",
+    return rx.center(
+        rx.form(
+            rx.vstack(
+                rx.heading("Panel de Control STEM", size="7", margin_bottom="1em", color="black"),
+                rx.box(
+                    rx.vstack(
+                        rx.text("Introduce tus credenciales para gestionar los contenidos", size="2", opacity="0.8", color="slate"),
+                        rx.input(
+                            placeholder="Contraseña",
+                            type="password",
+                            name="password_field", # <--- CAMBIADO a 'password_field' para evitar colisiones
+                            width="100%",
+                        ),
+                        rx.button(
+                            "Acceder al Sistema",
+                            type="submit", 
+                            color_scheme="indigo",
+                            width="100%",
+                        ),
+                        spacing="4",
                     ),
-                    rx.button(
-                        "Acceder al Sistema",
-                        on_click=State.login,
-                        color_scheme="indigo",
-                        width="100%",
-                    ),
-                    spacing="4",
+                    padding="2em",
+                    border_radius="15px",
+                    border=f"1px solid {rx.color('slate', 5)}",
+                    background_color="white",
+                    box_shadow="0px 10px 30px rgba(0,0,0,0.3)",
+                    width="350px",
                 ),
-                padding="2em",
-                border_radius="15px",
-                border=f"1px solid {rx.color('slate', 5)}",
-                background_color="white",
-                box_shadow="0px 10px 30px rgba(0,0,0,0.3)",
-                width="350px",
+                align="center",
             ),
-            align="center",
+            on_submit=State.login, 
         ),
         width="100%",
-        height="100vh", # <--- CAMBIO 3: Obligamos a que ocupe todo el alto de la ventana
-        # Añadimos un fondo profesional acorde a tu estilo
+        height="100vh",
         background=f"radial-gradient(circle at top, {rx.color('indigo', 3)}, {rx.color('slate', 2)})",
     )

@@ -31,14 +31,22 @@ class State(rx.State):
     esta_cargando: bool = False 
 
     esta_autenticado: bool = False
-    password_input: str = ""
+    # ¡HEMOS ELIMINADO 'password_input' de aquí para evitar colisiones!
 
-    def login(self):
-        """Verificación simple de credenciales."""
-        # En una app real, esto consultaría una base de datos de usuarios
-        if self.password_input == "admin123": # Cambia esta clave
+    def login(self, form_data: dict):
+        """Verificación segura mediante formulario."""
+        # IMPRIMIMOS EN TU TERMINAL PARA MONITOREAR LA ENTRADA
+        print("\n=== DEBUG LOGIN ACADEMA ===")
+        print(f"Diccionario recibido del formulario: {form_data}")
+        
+        # Recuperamos la clave usando el nuevo nombre 'password_field'
+        password_ingresado = form_data.get("password_field", "").strip()
+        
+        print(f"Contraseña extraída y limpia: '{password_ingresado}'")
+        print("============================\n")
+
+        if password_ingresado == "Cursos": 
             self.esta_autenticado = True
-            self.password_input = "" # Limpiamos el campo
         else:
             return rx.window_alert("Contraseña incorrecta")
 
@@ -132,18 +140,6 @@ class State(rx.State):
                 session.commit()
         # Llamamos a cargar_materias para que la lista de la web se actualice al instante
         self.cargar_materias() 
-
-
-    def login(self):
-        if self.password_input == "Cursillos":
-            self.esta_autenticado = True
-            self.password_input = ""
-        else:
-            return rx.window_alert("Contraseña incorrecta")
-
-    # AÑADE ESTO MANUALMENTE SI FALLA EL AUTOMÁTICO
-    def set_password_input(self, valor: str):
-        self.password_input = valor
 
     
     # --- LÓGICA DEL TUTOR STEM OPTIMIZADA Y ASÍNCRONA ---
