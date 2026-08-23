@@ -4,60 +4,186 @@ from .state import State
 from .models import Materia
 from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO, COLOR_BRANDNAME
 
-# Asegúrate de que esta función esté presente
+# =========================================================================
+# COMPONENTE 1: NAVBAR SUPERIOR INTEGRADO
+# =========================================================================
 def navbar() -> rx.Component:
+    """Barra de navegación de Javi con enlaces y botones de filtrado."""
     return rx.hstack(
-        rx.heading(State.brand_name, size="7", color=COLOR_BRANDNAME),
+        rx.hstack(
+            rx.icon(tag="graduation-cap", size=28, color="white"),
+            rx.heading(State.brand_name, size="6", color=COLOR_BRANDNAME),
+            spacing="3",
+            align_items="center"
+        ),
         rx.spacer(),
-        rx.link("Inicio", href="/", color="white"),
-        rx.link("Productos", href="/productos", color="green"),
-        # ... resto de estilos del navbar
+        rx.hstack(
+            rx.button("Todos", on_click=lambda: State.set_filtro_curso("Todos"), variant="ghost", color="white"),
+            rx.button("1º ESO", on_click=lambda: State.set_filtro_curso("1º ESO"), variant="ghost", color="white"),
+            rx.button("2º ESO", on_click=lambda: State.set_filtro_curso("2º ESO"), variant="ghost", color="white"),
+            spacing="3",
+            align_items="center"
+        ),
+        rx.spacer(),
+        rx.hstack(
+            rx.link("Inicio", href="/", color="white", underline="none"),
+            rx.link("Productos", href="/productos", color="white", underline="none"),
+            spacing="4"
+        ),
+        justify_content="space-between",
+        padding="1em 2em",
+        border_bottom=f"1px solid {rx.color('slate', 4)}",
+        background="#000000",
+        width="100%",
+        align_items="center"
     )
 
-# --- 2. COMPONENTES DEL TUTOR IA (EDUCACIÓN 3.0) ---
+# =========================================================================
+# COMPONENTE 2: SIDEBAR DE TEMARIOS REACITVO
+# =========================================================================
+def sidebar_lecciones() -> rx.Component:
+    """Sidebar que muestra el índice interactivo del Tema 1."""
+    return rx.vstack(
+        rx.heading("Tema 1: Números Naturales", size="5", color="white", margin_bottom="1.5em"),
+        rx.vstack(
+            rx.foreach(
+                State.lessons_list,
+                lambda lesson: rx.button(
+                    lesson.title,  # Acceso por puntos oficial de dataclass
+                    on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
+                    width="100%",
+                    color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
+                    variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
+                    style={
+                        "justify-content": "start",
+                        "white-space": "normal",
+                        "text-align": "left",
+                        "padding_y": "1.5em",
+                        "cursor": "pointer"
+                    }
+                )
+            ),
+            width="100%",
+            spacing="2",
+        ),
+        width="100%",
+        padding="1.5em",
+        border_right=f"1px solid {rx.color('slate', 4)}",
+        height="100%",
+    )
+
+# =========================================================================
+# COMPONENTE 3: BURBUJAS DE CONVERSACIÓN DE CHAT
+# =========================================================================
+
+def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
+    """Muestra de forma impecable y separada el chat del alumno y del tutor."""
+    return rx.vstack(
+        # 1. BURBUJA DEL ALUMNO (A la derecha, morada, solo tu pregunta: interaccion)
+        rx.box(
+            rx.text(interaccion[0], color="white", weight="medium"),
+            background_color="#6010DE",
+            padding="0.8em 1.2em",
+            border_radius="18px 18px 0px 18px",
+            align_self="end",
+            max_width="80%",
+        ),
+        # 2. BURBUJA DEL TUTOR (A la izquierda, blanca, con formato Markdown: interaccion[1])
+        # Solo se muestra si tiene contenido (evitando globos vacíos al inicio)
+        rx.cond(
+            interaccion[1] != "",
+            rx.box(
+                rx.markdown(
+                    interaccion[1], 
+                    color="black"
+                ),
+                background_color="white",
+                padding="0.8em 1.2em",
+                border_radius="18px 18px 18px 0px",
+                align_self="start",
+                max_width="80%",
+                box_shadow="0px 2px 5px rgba(0,0,0,0.05)",
+            ),
+        ),
+        width="100%",
+        spacing="2",
+    )
+
+
+'''
+
 def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
     """Corrige el error de la imagenIA separando pregunta y respuesta."""
     return rx.vstack(
-        # 1. BURBUJA DEL ALUMNO (Índice 0: lo que tú escribes)
+        # 1. BURBUJA DEL ALUMNO (Tu pregunta - Derecha)
         rx.box(
-            # Usamos interaccion para sacar solo tu pregunta
-            rx.text(interaccion[0], color="white", weight="medium"),
-            background_color="#6010DE", 
+            rx.text(interaccion, color="white", weight="medium"),
+            background_color="#6010DE",
             padding="0.8em 1.2em",
             border_radius="18px 18px 0px 18px",
-            align_self="end", # Se pega a la derecha
+            align_self="end",
             max_width="80%",
         ),
-        
-        # 2. BURBUJA DEL TUTOR IA (Índice 1: lo que responde la IA)
+        # 2. BURBUJA DEL TUTOR (Respuesta de la IA - Izquierda)
         rx.box(
-            # IMPORTANTE: rx.markdown interpreta las negritas y fórmulas de la imagen
-            rx.markdown(
-                interaccion[1],
-                # ESTA LÍNEA ES LA CLAVE PARA LAS FÓRMULAS:
-                extensions=["latex"], 
-                component_props={
-                    "p": {"margin_bottom": "1em", "line_height": "1.6"},
-                    "ul": {"padding_left": "1.5em"},
-                }
-            ),
-            background_color="#F3F4F6", # Gris claro para diferenciar
-            padding="1em 1.5em",
+            rx.markdown(interaccion[1], color="white"),
+            background_color="#1F2937",
+            padding="0.8em 1.2em",
             border_radius="18px 18px 18px 0px",
-            align_self="start", # Se pega a la izquierda
-            max_width="90%",
-            color="slate",
-            border="1px solid #E5E7EB",
+            align_self="start",
+            max_width="80%",
         ),
-        spacing="3", # Crea el espacio vertical que falta en tu imagen
         width="100%",
-        margin_y="1em",
+        spacing="2"
     )
 
-def interfaz_tutor_ia() -> rx.Component:
-    """Cuadro de chat dinámico con historial."""
+'''
+
+# =========================================================================
+# COMPONENTE 4: CHAT 1 - TUTOR CONTEXTUAL DE LECCIÓN (GEMMA LOCAL)
+# =========================================================================
+def interfaz_tutor_leccion() -> rx.Component:
+    """Cuadro de chat dinámico para la IA de Lección Contextual."""
     return rx.vstack(
-        rx.heading("Tutor STEM Inteligente", size="4", color="white"),
+        rx.heading("Tutor STEM Inteligente (Lección)", size="4", color="white"),
+        rx.scroll_area(
+            rx.vstack(
+                rx.foreach(State.historial_leccion, mensaje_chat),
+                width="100%",
+                spacing="4",
+            ),
+            height="350px",
+            width="100%",
+            padding="1em",
+            border=f"1px solid {rx.color('slate', 4)}",
+            border_radius="10px",
+        ),
+        rx.hstack(
+            rx.input(
+                placeholder="Pregunta sobre esta lección...",
+                value=State.pregunta_leccion,
+                on_change=State.set_pregunta_leccion,
+                width="100%",
+            ),
+            rx.button(
+                rx.cond(State.cargando_leccion, rx.spinner(size="1"), "Preguntar"),
+                on_click=State.preguntar_tutor_leccion,
+                disabled=State.cargando_leccion,
+            ),
+            width="100%",
+        ),
+        width="100%",
+        spacing="3",
+        padding="1em",
+    )
+
+# =========================================================================
+# COMPONENTE 5: CHAT 2 - ASISTENTE GLOBAL (DEEPSEEK)
+# =========================================================================
+def interfaz_tutor_ia() -> rx.Component:
+    """Cuadro de chat dinámico con historial para consultas generales."""
+    return rx.vstack(
+        rx.heading("Tutor STEM Inteligente", size="4", color="black"),
         rx.scroll_area(
             rx.vstack(
                 rx.foreach(State.historial_chat, mensaje_chat),
@@ -67,7 +193,7 @@ def interfaz_tutor_ia() -> rx.Component:
             height="350px",
             width="100%",
             padding="1em",
-            border="1px solid #E5E7EB",
+            border=f"1px solid {rx.color('slate', 4)}",
             border_radius="10px",
         ),
         rx.hstack(
@@ -79,7 +205,7 @@ def interfaz_tutor_ia() -> rx.Component:
             ),
             rx.button(
                 rx.cond(State.esta_cargando, rx.spinner(size="1"), "Enviar"),
-                on_click=State.preguntar_tutor, # Llamada al backend asíncrono
+                on_click=State.preguntar_tutor,
                 disabled=State.esta_cargando,
             ),
             width="100%",
@@ -89,10 +215,13 @@ def interfaz_tutor_ia() -> rx.Component:
         padding="1em",
     )
 
-def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
+# =========================================================================
+# COMPONENTE 6: TARJETAS DE MATERIAS
+# =========================================================================
+def card_materia(materia: Materia) -> rx.Component:
+    """Tarjeta individual para el catálogo de la academia."""
     return rx.card(
         rx.vstack(
-            # Cadena de condiciones anidada correctamente
             rx.cond(
                 materia.icono == "atom",
                 rx.icon(tag="atom", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
@@ -111,7 +240,6 @@ def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
                                 rx.cond(
                                     materia.icono == "dna",
                                     rx.icon(tag="dna", size=30, color=rx.color(COLOR_PRIMARIO, 11)),
-                                    # Icono por defecto si nada coincide
                                     rx.icon(tag="book-open", size=30, color=rx.color(COLOR_PRIMARIO, 11))
                                 )
                             )
@@ -119,70 +247,76 @@ def card_materia(materia: Materia) -> rx.Component: # Cambiado de dict a Materia
                     )
                 )
             ),
-            # Acceso profesional por puntos
-            rx.heading(materia.nombre, size="4"),
+            rx.heading(materia.nombre, size="4", color="black"),
             rx.badge(materia.curso, color_scheme="orange"),
-            rx.text(materia.descripcion, size="2"),
+            rx.text(materia.descripcion, size="2", color="gray"),
             rx.button(
-                "Comprar ", materia.precio, "€", 
+                "Comprar " + materia.precio.to(str) + "€",
                 style=estilo_boton_compra
             ),
-            # BOTÓN DE ELIMINAR (Nuevo)
             rx.button(
-                rx.icon(tag="trash-2"), # Icono de papelera
+                rx.icon(tag="trash-2"),
                 on_click=lambda: State.borrar_materia(materia.id),
                 color_scheme="red",
                 variant="soft",
+                cursor="pointer"
             ),
             width="100%",
             justify="between",
-            spacing="1",
-            align="start",
+            spacing="2",
+            align="start"
         ),
         style=estilo_base_tarjeta
     )
 
-
+# =========================================================================
+# COMPONENTE 7: FORMULARIO REGISTRO MATERIAS
+# =========================================================================
 def formulario_materia() -> rx.Component:
+    """Formulario interactivo para registrar materias."""
     return rx.vstack(
         rx.heading("Añadir Nueva Materia", size="5", color="white"),
         rx.input(
             placeholder="Nombre de la materia (ej: Álgebra)",
             on_change=State.set_nuevo_nombre,
             value=State.nuevo_nombre,
-            width="100%",
+            width="100%"
         ),
         rx.select(
             ["1º ESO", "2º ESO", "3º ESO", "4º ESO", "1º Bachillerato", "2º Bachillerato"],
             on_change=State.set_nuevo_curso,
-            width="100%",
+            width="100%"
         ),
         rx.text_area(
             placeholder="Descripción detallada...",
             on_change=State.set_nueva_descripcion,
             value=State.nueva_descripcion,
-            width="100%",
+            width="100%"
         ),
         rx.input(
             placeholder="Precio en €",
             type="number",
             on_change=State.set_nuevo_precio,
-            width="100%",
+            width="100%"
         ),
         rx.button(
             "Crear Materia",
             on_click=State.guardar_materia,
             color_scheme="green",
             width="100%",
+            cursor="pointer"
         ),
         padding="2em",
-        margin_top= "15px",
+        margin_top="15px",
         border=f"1px solid {rx.color('slate', 5)}",
         border_radius="15px",
         spacing="3",
-        width="100%",
+        width="100%"
     )
 
+# =========================================================================
+# COMPONENTE 8: PANTALLA DE ACCESO (LOGIN)
+# =========================================================================
 def login_admin() -> rx.Component:
     """Pantalla de acceso exclusivo centrada y a pantalla completa."""
     return rx.center(
@@ -195,64 +329,31 @@ def login_admin() -> rx.Component:
                         rx.input(
                             placeholder="Contraseña",
                             type="password",
-                            name="password_field", # <--- CAMBIADO a 'password_field' para evitar colisiones
-                            width="100%",
+                            name="password_field",
+                            width="100%"
                         ),
                         rx.button(
                             "Acceder al Sistema",
-                            type="submit", 
+                            type="submit",
                             color_scheme="indigo",
                             width="100%",
+                            cursor="pointer"
                         ),
-                        spacing="4",
+                        spacing="4"
                     ),
                     padding="2em",
                     border_radius="15px",
                     border=f"1px solid {rx.color('slate', 5)}",
                     background_color="white",
                     box_shadow="0px 10px 30px rgba(0,0,0,0.3)",
-                    width="350px",
+                    width="350px"
                 ),
-                align="center",
+                align="center"
             ),
-            on_submit=State.login, 
+            on_submit=State.login
         ),
         width="100%",
         height="100vh",
-        background=f"radial-gradient(circle at top, {rx.color('indigo', 3)}, {rx.color('slate', 2)})",
-    )
-
-
-def sidebar_lecciones() -> rx.Component:
-    """Sidebar que muestra el índice interactivo del Tema 1."""
-    print("SIDEBAR LESSONS:", State.lessons_list)
-    return rx.vstack(
-        rx.heading("Tema 1: Números Naturales", size="5", color="white", margin_bottom="1.5em"),
-        rx.vstack(
-            rx.foreach(
-                State.lessons_list,
-                lambda lesson: rx.button(
-                    lesson[ 1 ],  # <--- CLAVE 1: 'lesson[ 1 ]' extrae el Título ("1. Sistemas de numeración")
-                    on_click=lambda: State.cargar_contenido_leccion(lesson[ 0 ]),  # <--- CLAVE 2: 'lesson[ 0 ]' extrae el ID de la lección
-                    width="100%",
-                    # CLAVE 3: Comparamos el ID con el seleccionado para iluminar el botón activo
-                    color_scheme=rx.cond(State.selected_lesson == lesson[ 0 ], "indigo", "slate"),
-                    variant=rx.cond(State.selected_lesson == lesson[ 0 ], "solid", "ghost"),
-                    style={
-                        "justify-content": "start",
-                        "white-space": "normal",
-                        "text-align": "left",
-                        "padding_y": "1.5em",
-                        "cursor": "pointer"
-                    }
-                )
-            ),
-            width="100%",
-            spacing="2",
-        ),
-        width="100%",
-        padding="1.5em",
-        border_right=f"1px solid {rx.color('slate', 4)}",
-        height="100%",
+        background=f"radial-gradient(circle at top, {rx.color('indigo', 3)}, {rx.color('slate', 2)})"
     )
 
