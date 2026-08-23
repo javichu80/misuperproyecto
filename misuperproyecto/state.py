@@ -226,15 +226,19 @@ class State(rx.State):
             return
 
         pregunta_alumno = self.pregunta_leccion.strip()
+        # Limpiamos el cuadro de texto de la lección inmediatamente para mejorar la experiencia de usuario
+        self.pregunta_leccion = ""
         self.cargando_leccion = True
         yield
 
+        # 1. Definimos las instrucciones de rol y comportamiento socrático
         system_prompt = (
             "Eres un tutor de Inteligencia Artificial especializado en STEM para alumnos de 1º de ESO. "
             "Tu objetivo es guiar al estudiante de manera socrática, explicándole paso a paso sin darle la solución directa, "
             "haciendo preguntas de control y usando ejemplos cotidianos para facilitar la comprensión."
         )
 
+        # 2. Inyectamos dinámicamente el contenido Markdown de la lección que el alumno está estudiando
         contexto_leccion = (
             f"El alumno está estudiando actualmente la lección:\n"
             f"=== CONTENIDO DE LA LECCIÓN ===\n"
@@ -247,26 +251,34 @@ class State(rx.State):
             {"role": "system", "content": f"{system_prompt}\n\n{contexto_leccion}"}
         ]
 
-        # Añadimos historial reciente para mantener el contexto
+        # 3. CONTEXTO SEGURO: Añadimos el historial reciente ANTES de meter el "Pensando..."
         for prev_preg, prev_resp in self.historial_leccion[-3:]:
             messages_api.append({"role": "user", "content": prev_preg})
             messages_api.append({"role": "assistant", "content": prev_resp})
 
+        # Añadimos la pregunta actual del alumno al mensaje de la API
         messages_api.append({"role": "user", "content": pregunta_alumno})
 
+        # 4. UX INSTANTÁNEA: Mostramos la pregunta y el globo "Pensando..." en la pantalla inmediatamente
+        self.historial_leccion = self.historial_leccion + [(pregunta_alumno, "Pensando...")]
+        yield
+
+        # 5. LLAMADA ASÍNCRONA A OLLAMA
         try:
             response = await ollama.AsyncClient().chat(
                 model="gemma",
                 messages=messages_api,
             )
             respuesta_gemma = response["message"]["content"]
-            self.historial_leccion = self.historial_leccion + [(pregunta_alumno, respuesta_gemma)]
+            
+            # Reemplazamos quirúrgicamente el "Pensando..." por la respuesta final estructurada de Gemma
+            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_gemma)]
         except Exception as e:
             error_msg = "⚠️ No he podido conectar con Gemma local. Comprueba que Ollama está activo (`ollama run gemma`)."
-            self.historial_leccion = self.historial_leccion + [(pregunta_alumno, error_msg)]
+            # Si falla, reemplazamos el "Pensando..." por el mensaje de error amigable
+            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, error_msg)]
             print(f"Error en Ollama: {e}")
 
-        self.pregunta_leccion = ""
         self.cargando_leccion = False
         yield
 
@@ -340,69 +352,3 @@ class State(rx.State):
         yield
     
     
-    
-    '''
-    async def preguntar_tutor(self):
-        """Chat genérico global conectado a Hugging Face usando formato compatible con OpenAI."""
-        if not self.pregunta_tutor.strip():
-            return
-        
-        pregunta = self.pregunta_tutor.strip()
-        self.esta_cargando = True
-        yield
-        
-        # Insertamos un estado temporal de "pensando" en el chat
-        self.historial_chat = self.historial_chat + [(pregunta, "Pensando...")]
-        yield
-        
-        try:
-            # Extraemos tu token de Hugging Face desde el archivo .env
-            api_key = os.getenv("HUGGINGFACE_TOKEN")
-            if api_key:
-                async with httpx.AsyncClient() as client:
-                    # Hacemos la petición al endpoint oficial de Hugging Face compatible con OpenAI
-                    response = await client.post(
-                        "https://router.huggingface.co/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json"
-                        },
-                        json={
-                            # Qwen 2.5 72B es uno de los mejores y más rápidos modelos STEM en Hugging Face
-                            "model": "Qwen/Qwen2.5-72B-Instruct",
-                            "messages": [
-                                {"role": "system", "content": "Eres un tutor STEM experto, motivador y muy pedagógico."},
-                                {"role": "user", "content": pregunta}
-                            ],
-                            "max_tokens": 500
-                        },
-                        timeout=30.0
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        # ¡Al ser compatible con OpenAI, ahora sí contiene la clave 'choices' perfectamente!
-                        respuesta = data["choices"][0]["message"]["content"]
-                    else:
-                        try:
-                            error_info = response.json()
-                            msg_error = error_info.get("error", {}).get("message", "Error de API")
-                            # Si Hugging Face está arrancando el modelo en su servidor gratuito:
-                            if "estimated_time" in error_info:
-                                msg_error = "El modelo gratuito de Hugging Face se está cargando. Por favor, reenvía el mensaje en 30 segundos."
-                        except Exception:
-                            msg_error = f"Código de estado {response.status_code}"
-                        
-                        respuesta = f"⚠️ Error en Hugging Face: {msg_error}"
-            else:
-                respuesta = "⚠️ No se ha encontrado la variable 'HUGGINGFACE_TOKEN' en tu archivo .env."
-            
-            # Reemplazamos el estado de "pensando..." por la respuesta final de Hugging Face
-            self.historial_chat = self.historial_chat[:-1] + [(pregunta, respuesta)]
-        except Exception as e:
-            self.historial_chat = self.historial_chat[:-1] + [(pregunta, f"⚠️ Error al conectar con Hugging Face: {str(e)}")]
-        
-        self.pregunta_tutor = ""
-        self.esta_cargando = False
-        yield
-    '''
