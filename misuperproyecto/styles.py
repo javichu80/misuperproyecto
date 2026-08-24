@@ -3,7 +3,7 @@ import reflex as rx
 # 1. Definición de la Paleta de Colores y Constantes
 COLOR_BLANCO_PURO = "#FFFFFF"
 COLOR_BRANDNAME = "#E5E6ED"
-COLOR_FONDO = "#394E8E"  # Un tono oscuro profundo para el modo "Dark STEM"
+COLOR_FONDO = "#1F3065"  # Un tono oscuro profundo para el modo "Dark STEM"
 COLOR_PRIMARIO = 'indigo' 
 COLOR_SECUNDARIO = "white"
 COLOR_TEXTO = rx.color("slate", 12)

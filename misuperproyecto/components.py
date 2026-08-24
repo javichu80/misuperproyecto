@@ -8,34 +8,45 @@ from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO, CO
 # COMPONENTE 1: NAVBAR SUPERIOR INTEGRADO
 # =========================================================================
 def navbar() -> rx.Component:
-    """Barra de navegación de Javi con enlaces y botones de filtrado."""
-    return rx.hstack(
+    """Barra de navegación responsiva de Javi con enlaces y botones de filtrado."""
+    return rx.flex(
+        # 1. LOGO Y CABECERA (Se alinea al centro en móvil y a la izquierda en PC)
         rx.hstack(
             rx.icon(tag="graduation-cap", size=28, color="white"),
             rx.heading(State.brand_name, size="6", color=COLOR_BRANDNAME),
             spacing="3",
             align_items="center"
         ),
-        rx.spacer(),
-        rx.hstack(
+        
+        # 2. FILTRADO DE CURSOS (Elástico: se adapta y centra si la pantalla es pequeña)
+        rx.flex(
             rx.button("Todos", on_click=lambda: State.set_filtro_curso("Todos"), variant="ghost", color="white"),
             rx.button("1º ESO", on_click=lambda: State.set_filtro_curso("1º ESO"), variant="ghost", color="white"),
             rx.button("2º ESO", on_click=lambda: State.set_filtro_curso("2º ESO"), variant="ghost", color="white"),
             spacing="3",
-            align_items="center"
+            flex_wrap="wrap",
+            justify="center",
+            align_items="center",
+            margin_y=["0.6em", "0"], # Margen vertical de separación solo en móviles
         ),
-        rx.spacer(),
+        
+        # 3. ENLACES DE NAVEGACIÓN
         rx.hstack(
             rx.link("Inicio", href="/", color="white", underline="none"),
             rx.link("Productos", href="/productos", color="white", underline="none"),
-            spacing="4"
+            spacing="4",
+            align_items="center"
         ),
-        justify_content="space-between",
-        padding="1em 2em",
+        
+        # PROPIEDADES RESPONSIVAS CLAVE PARA EL CONTENEDOR:
+        flex_direction=["column", "row"],  # En columna en móvil, en fila en PC
+        justify_content="space-between",   # Distribuye los 3 bloques a lo largo de la pantalla
+        align_items="center",              # Centra los elementos verticalmente
+        flex_wrap="wrap",                  # Permite saltos de línea fluidos si es necesario
+        padding=["1em", "1em 2em"],        # Menos padding lateral en móvil para ganar espacio
         border_bottom=f"1px solid {rx.color('slate', 4)}",
-        background="#000000",
+        background="#000000",              # Mantenemos tu elegante negro de fondo
         width="100%",
-        align_items="center"
     )
 
 # =========================================================================
@@ -109,35 +120,6 @@ def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
         spacing="2",
     )
 
-
-'''
-
-def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
-    """Corrige el error de la imagenIA separando pregunta y respuesta."""
-    return rx.vstack(
-        # 1. BURBUJA DEL ALUMNO (Tu pregunta - Derecha)
-        rx.box(
-            rx.text(interaccion, color="white", weight="medium"),
-            background_color="#6010DE",
-            padding="0.8em 1.2em",
-            border_radius="18px 18px 0px 18px",
-            align_self="end",
-            max_width="80%",
-        ),
-        # 2. BURBUJA DEL TUTOR (Respuesta de la IA - Izquierda)
-        rx.box(
-            rx.markdown(interaccion[1], color="white"),
-            background_color="#1F2937",
-            padding="0.8em 1.2em",
-            border_radius="18px 18px 18px 0px",
-            align_self="start",
-            max_width="80%",
-        ),
-        width="100%",
-        spacing="2"
-    )
-
-'''
 
 # =========================================================================
 # COMPONENTE 4: CHAT 1 - TUTOR CONTEXTUAL DE LECCIÓN (GEMMA LOCAL)
@@ -315,7 +297,33 @@ def formulario_materia() -> rx.Component:
     )
 
 # =========================================================================
-# COMPONENTE 8: PANTALLA DE ACCESO (LOGIN)
+# COMPONENTE 8: BUSCADOR DE MATERIAS
+# =========================================================================
+def buscador_materias() -> rx.Component:
+    """Barra de búsqueda de materias moderna, elegante y de alto contraste."""
+    return rx.hstack(
+        rx.icon(tag="search", size=18, color="#E5E6ED"),
+        rx.input(
+            placeholder="Buscar materias por nombre o descripción...",
+            value=State.buscar_texto,
+            on_change=State.set_buscar_texto, # Reflex vincula el input con la variable de forma automática
+            variant="surface",
+            width="100%",
+            color="black",
+            focus_border_color="transparent",
+        ),
+        background="rgba(255, 255, 255, 0.08)",
+        border="1px solid rgba(255, 255, 255, 0.2)",
+        border_radius="10px",
+        padding_x="1em",
+        align_items="center",
+        width="100%",
+        margin_bottom="1.5em", # Separa estéticamente el buscador de la cuadrícula
+    )
+
+
+# =========================================================================
+# COMPONENTE 9: PANTALLA DE ACCESO (LOGIN)
 # =========================================================================
 def login_admin() -> rx.Component:
     """Pantalla de acceso exclusivo centrada y a pantalla completa."""

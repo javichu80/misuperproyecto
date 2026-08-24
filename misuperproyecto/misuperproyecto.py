@@ -1,6 +1,7 @@
 import reflex as rx
 from .components import (
     navbar, 
+    buscador_materias,
     card_materia, 
     formulario_materia, 
     interfaz_tutor_ia,      # IA Genérica (DeepSeek - Al final)
@@ -10,17 +11,19 @@ from .components import (
 )
 from .state import State
 
-COLOR_FONDO = "#738CC9"
+COLOR_FONDO = "#4E6AC0"  # Unificamos con el tono oscuro profundo "Dark STEM" de tu paleta
 
 def index() -> rx.Component:
     return rx.cond(
         State.esta_autenticado,
-        # --- VISTA 1: MODO ADMINISTRADOR (Academia Completa) ---
+        # --- VISTA 1: MODO ALUMNO/ADMINISTRADOR AUTENTICADO ---
         rx.vstack(
             navbar(),
             
-            # SECCIÓN SUPERIOR: "VISTA DE ESTUDIO" (Novedad del Blueprint)
-            rx.container(
+            # ==========================================
+            # SECCIÓN SUPERIOR: "VISTA DE ESTUDIO" (Sprint 4)
+            # ==========================================
+            rx.box(
                 rx.heading(
                     "Apoyo Escolar para " + State.filtro_curso, 
                     size="8",
@@ -32,55 +35,66 @@ def index() -> rx.Component:
                     color="transparent",
                 ),
 
-                # Contenedor Flexible Horizontal de Estudio
+                # Contenedor Flexible Horizontal de Estudio (100% Adaptativo)
                 rx.flex(
-                    # 1. Sidebar (Menú de lecciones) - 25% de ancho
+                    # 1. Sidebar (Menú de lecciones) - 25% de ancho en PC, 100% en móvil
                     rx.box(
                         sidebar_lecciones(),
-                        width=["100%", "100%", "25%"],
-                        margin_bottom=["1.5em", "1.5em", "0em"],
+                        width=["100%", "100%", "18%"],
+                        margin_bottom=["1.5em", "0.5em", "0em"],
                     ),
                     
-                    # 2. Visor de Teoría Markdown - 50% de ancho
+                    # 2. Visor de Teoría Markdown - 48% de ancho en PC (para dar aire), 100% en móvil
                     rx.box(
                         rx.scroll_area(
                             rx.markdown(
                                 State.lesson_content,
                                 color="black",
                             ),
-                            height="60vh",
+                            height="72vh",
                             scrollbars="vertical",
                         ),
                         padding="1.5em",
                         background=rx.color("slate", 2),
                         border_radius="15px",
                         border=f"1px solid {rx.color('slate', 4)}",
-                        width=["100%", "100%", "50%"],
-                        margin_x=["0em", "0em", "1em"],
+                        width=["100%", "100%", "56%"],
+                        margin_x=["0em", "0em", "1%"],
+                        margin_bottom=["1.5em", "1.5em", "0em"],
                     ),
 
-                    # 3. Tutor IA Contextual de Lección (Gemma) - 25% de ancho
+                    # 3. Tutor IA Contextual de Lección (Gemma) - 25% de ancho en PC, 100% en móvil
                     rx.box(
                         interfaz_tutor_leccion(),
-                        width=["100%", "100%", "25%"],
+                        width=["100%", "100%", "24%"],
                     ),
                     
                     width="100%",
-                    flex_wrap="wrap",
+                    flex_direction=["column", "column", "row"],  # En columna en móvil/tablet, fila en PC
+                    justify_content="between",
                     align_items="stretch",
+                    spacing="4",
                 ),
                 
-                size="3",
+                # ESTILOS DE ANCHO TOTAL FLUIDO:
+                width="100%",
+                max_width="1600px", 
+                margin_x="auto",                # Centra la sección horizontalmente en la pantalla
                 padding_x=["1em", "2em", "4em"],
                 margin_bottom="3em",
             ),
 
             rx.divider(color_scheme="gray"),
 
+            # ==========================================
             # SECCIÓN INFERIOR: GESTIÓN DE MATERIAS Y CHAT GENÉRICO
-            rx.container(
+            # ==========================================
+            rx.box(
                 rx.heading("Gestión de Materias STEM", size="6", color="white", margin_y="1em"),
-                rx.hstack(
+                buscador_materias(),
+                # Contenedor Flexible Inferior (100% Adaptativo)
+                rx.grid(
+                    # Columna Izquierda: Formulario de Materia y Cerrar Sesión (30% ancho en PC, 100% en móvil)
                     rx.box(
                         rx.vstack(
                             formulario_materia(),
@@ -93,125 +107,80 @@ def index() -> rx.Component:
                                 margin_top="1em",
                                 cursor="pointer",
                             ),
-                            width="100%"
+                            width="100%",
+                            
                         ),
-                        width="30%"
+                        width="100%",
+                         # ¡CORREGIDO! Usamos diccionarios para breakpoints en propiedades de grid
+                        grid_column={"initial": "span 1", "md": "1 / 2"},  
                     ),
-                    # Columna Derecha (Buscador, Filtros Rápidos y Cuadrícula) - 70% ancho
+                    
+                    # Columna Central: Cuadrícula Elástica de Materias (38% ancho en PC, 100% en móvil)
                     rx.box(
                         rx.vstack(
-                            # --- BARRA DE FILTRADO Y BÚSQUEDA COMPLETA (¡RECUPERADA!) ---
-                            rx.hstack(
-                                rx.input(
-                                    placeholder="Buscar materia por nombre o descripción...",
-                                    value=State.buscar_texto,
-                                    on_change=State.set_buscar_texto,
-                                    width="100%",
-                                    background_color="rgba(255, 255, 255, 0.05)",
-                                    border=f"1px solid {rx.color('slate', 5)}",
-                                    color="white",
-                                ),
-                                rx.button(
-                                    rx.icon(tag="search", size=18),
-                                    color_scheme="indigo",
-                                    variant="solid",
-                                ),
-                                width="100%",
-                                spacing="3",
-                                margin_bottom="1em",
-                            ),
-                            
-                            # Botones de filtro rápido para encender/apagar cursos de tarjetas
-                            rx.hstack(
-                                rx.button(
-                                    "Todas",
-                                    on_click=lambda: State.set_filtro_curso("Todos"),
-                                    color_scheme=rx.cond(State.filtro_curso == "Todos", "indigo", "slate"),
-                                    variant=rx.cond(State.filtro_curso == "Todos", "solid", "surface"),
-                                    size="2",
-                                    cursor="pointer",
-                                ),
-                                rx.button(
-                                    "1º ESO",
-                                    on_click=lambda: State.set_filtro_curso("1º ESO"),
-                                    color_scheme=rx.cond(State.filtro_curso == "1º ESO", "indigo", "slate"),
-                                    variant=rx.cond(State.filtro_curso == "1º ESO", "solid", "surface"),
-                                    size="2",
-                                    cursor="pointer",
-                                ),
-                                rx.button(
-                                    "2º ESO",
-                                    on_click=lambda: State.set_filtro_curso("2º ESO"),
-                                    color_scheme=rx.cond(State.filtro_curso == "2º ESO", "indigo", "slate"),
-                                    variant=rx.cond(State.filtro_curso == "2º ESO", "solid", "surface"),
-                                    size="2",
-                                    cursor="pointer",
-                                ),
-                                rx.button(
-                                    "3º ESO",
-                                    on_click=lambda: State.set_filtro_curso("3º ESO"),
-                                    color_scheme=rx.cond(State.filtro_curso == "3º ESO", "indigo", "slate"),
-                                    variant=rx.cond(State.filtro_curso == "3º ESO", "solid", "surface"),
-                                    size="2",
-                                    cursor="pointer",
-                                ),
-                                rx.button(
-                                    "4º ESO",
-                                    on_click=lambda: State.set_filtro_curso("4º ESO"),
-                                    color_scheme=rx.cond(State.filtro_curso == "4º ESO", "indigo", "slate"),
-                                    variant=rx.cond(State.filtro_curso == "4º ESO", "solid", "surface"),
-                                    size="2",
-                                    cursor="pointer",
-                                ),
-                                spacing="2",
-                                margin_bottom="1.5em",
-                            ),
-                            
-                            # Cuadrícula con las tarjetas de materias filtradas reactivamente
+                            rx.heading("Materias Disponibles", size="4", color="white", margin_bottom="0.5em"),
                             rx.grid(
-                                rx.foreach(State.materias_filtradas, card_materia),
-                                columns={"initial": "1", "sm": "1", "md": "2"}, 
+                                rx.foreach(
+                                    State.materias_filtradas,  # Recorre tu lista de materias cargada en State
+                                    card_materia
+                                ),
+                                columns={"initial": "1", "sm": "1", "md": "2"},  # 1 columna en móvil/tablet, 2 columnas en PC
                                 spacing="4",
                                 width="100%",
                             ),
-                            width="100%",
-                            align_items="start",
+                           # width="100%",
                         ),
-                        width="70%"
+                        width="100%",
+                        grid_column={"initial": "span 1", "md": "2 / 3"},  # Segundo track
+                        margin_bottom=["2em", "2em", "0em"],
                     ),
-                    width="100%",
-                    spacing="5",
-                    align_items="start",
-                ),
-                
-                rx.divider(color_scheme="gray", margin_y="2em"),
-                
-                # CHAT GENÉRICO GLOBAL (DeepSeek - Al final de la página)
-                rx.vstack(
-                    rx.heading("Asistente STEM de Consulta General", size="5", color="white", margin_bottom="0.5em"),
+
+                    # Columna Derecha: Chat Global Genérico (DeepSeek) (30% ancho en PC, 100% en móvil)
                     rx.box(
                         interfaz_tutor_ia(),
-                        background=rx.color("slate", 2),
-                        border_radius="15px",
-                        padding="1em",
                         width="100%",
+                        grid_column={"initial": "span 1", "md": "3 / 4"},  # Tercer track
                     ),
+                    
+                    # ¡CLAVE DE LA REJILLA RESPONSIVA!
+                    columns={"initial": "1", "md": "3"},  # 1 columna en móvil/tablet, 3 en PC
+                    grid_template_columns={"initial": "1fr", "md": "30% 38% 30%"},  # Reparto exacto de proporciones en PC
                     width="100%",
+                    spacing="4",
                 ),
                 
-                size="3",
+                # ESTILOS DE ANCHO TOTAL FLUIDO:
+                width="100%",
+                max_width="1600px",
+                margin_x="auto",                # Centra la sección horizontalmente en la pantalla
                 padding_x=["1em", "2em", "4em"],
-                padding_y="2em",
+                margin_bottom="3em",
             ),
             
-            background=f"radial-gradient(circle at center, {COLOR_FONDO} 0%, #000000 100%)",
+            background_color=COLOR_FONDO,
             min_height="100vh",
             width="100%",
+            spacing="0",
         ),
-        
-        # --- VISTA 2: PANTALLA DE INICIO (Solo Login) ---
+        # --- VISTA 2: LOGIN ---
         login_admin()
-    )
+        )
+    
 
+# Configuración e inicialización de tu aplicación Reflex
 app = rx.App()
 app.add_page(index, on_load=State.iniciar_pagina)
+
+
+
+
+
+
+
+
+
+
+
+
+
+

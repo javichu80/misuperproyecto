@@ -218,7 +218,7 @@ class State(rx.State):
         self.esta_autenticado = False
 
     # =========================================================================
-    # LÓGICA CHAT 1: TUTOR DE LECCIÓN CONTEXTUAL (GEMMA LOCAL)
+    # LÓGICA CHAT 1: TUTOR DE LECCIÓN CONTEXTUAL (OLLAMA LOCAL)
     # =========================================================================
     async def preguntar_tutor_leccion(self):
         """Inyecta la teoría en Gemma (Ollama) para guiar socráticamente al alumno."""
@@ -266,7 +266,7 @@ class State(rx.State):
         # 5. LLAMADA ASÍNCRONA A OLLAMA
         try:
             response = await ollama.AsyncClient().chat(
-                model="gemma",
+                model="gemma2:2b",
                 messages=messages_api,
             )
             respuesta_gemma = response["message"]["content"]
@@ -283,7 +283,7 @@ class State(rx.State):
         yield
 
     # =========================================================================
-    # LÓGICA CHAT 2: ASISTENTE STEM GENERAL (DEEPSEEK - CONSULTA GLOBAL)
+    # LÓGICA CHAT 2: ASISTENTE STEM GENERAL (QWEN 2.5 - CONSULTA GLOBAL)
     # =========================================================================
     
     async def preguntar_tutor(self):
