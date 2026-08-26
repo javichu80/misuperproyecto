@@ -8,7 +8,8 @@ from .components import (
     interfaz_tutor_leccion, # IA Contextual (Gemma - Arriba)
     login_admin, 
     sidebar_lecciones,
-    seccion_entrega_actividad
+    seccion_entrega_actividad,
+    seccion_test_hibrido
 )
 from .state import State
 
@@ -53,7 +54,7 @@ def index() -> rx.Component:
                                     State.lesson_content,
                                     color="black",
                                 ),
-                                seccion_entrega_actividad(), # <-- ¡Aquí insertamos el formulario de entrega!
+                                seccion_test_hibrido(), # <-- ¡Aquí insertamos el formulario de entrega!
                                 width="100%",
                                 spacing="4",
                             ),

@@ -1,3 +1,14 @@
+---
+pregunta_test: "Escribe el número 13 en el sistema de numeración egipcio:"
+opciones_test:
+  - "A) Tres herraduras y una vara"
+  - "B) Una herradura y tres varas"
+  - "C) Trece varas verticales juntas"
+  - "D) Un lazo de cuerda y tres varas"
+opcion_correcta: "B) Una herradura y tres varas"
+feedback_correcto: "¡Respuesta Correcta! 🎉 ¡Has comprendido perfectamente que la herradura representa el 10 y las varas representan el 1!"
+---
+
 # Lección 1: Sistemas de numeración
 
 ## Objetivo

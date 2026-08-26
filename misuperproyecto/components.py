@@ -462,3 +462,111 @@ def seccion_entrega_actividad() -> rx.Component:
         border="1px solid #1f2937",
         background_color="#111827",
     )
+
+
+def seccion_test_hibrido() -> rx.Component:
+    """Componente visual interactivo con grilla de opciones y feedback instantáneo."""
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon(tag="circle-help", size=22, color="#6010DE"),
+                rx.heading("Ponte a prueba: Pregunta de control", size="3", color="white"),
+                spacing="2",
+                align="center",
+            ),
+            rx.text(
+                State.pregunta_test,
+                size="2",
+                weight="medium",
+                color="slate",
+                margin_bottom="0.5em",
+            ),
+            
+            # Muestra los botones de opciones generados de forma dinámica
+            rx.vstack(
+                rx.foreach(
+                    State.opciones_test,
+                    lambda opcion: rx.button(
+                        opcion,
+                        width="100%",
+                        # El botón cambia a color índigo si el alumno hace clic sobre él
+                        color_scheme=rx.cond(State.opcion_seleccionada == opcion, "indigo", "slate"),
+                        variant=rx.cond(State.opcion_seleccionada == opcion, "solid", "outline"),
+                        on_click=lambda: State.seleccionar_opcion(opcion),
+                        style={
+                            "justify-content": "start",
+                            "cursor": "pointer",
+                            "white-space": "normal",
+                            "text-align": "left",
+                            "padding_y": "1.2em"
+                        }
+                    )
+                ),
+                width="100%",
+                spacing="2",
+            ),
+            
+            # Botón de enviar para comprobar la respuesta
+            rx.button(
+                rx.cond(
+                    State.cargando_leccion,
+                    rx.spinner(size="1"),
+                    "Comprobar respuesta"
+                ),
+                on_click=State.verificar_respuesta_test,
+                disabled=State.cargando_leccion,
+                color_scheme="green",
+                width="100%",
+                margin_top="1em",
+                style={"cursor": "pointer"}
+            ),
+            
+            # Cuadro condicional de feedback rápido (Verde si acierta, Marrón si requiere pista)
+            rx.cond(
+                State.mostrar_feedback_test,
+                rx.box(
+                    rx.vstack(
+                        rx.hstack(
+                            rx.cond(
+                                State.test_correcto,
+                                rx.icon(tag="circle-check", color="#38b000"),
+                                rx.icon(tag="lightbulb", color="#ff9f1c")
+                            ),
+                            rx.heading(
+                                rx.cond(State.test_correcto, "¡Respuesta Correcta!", "Sugerencia del Tutor"),
+                                size="2"
+                            ),
+                            spacing="2",
+                            align="center"
+                        ),
+                        rx.text(State.feedback_test, size="2", color="white"),
+                        spacing="2",
+                        align="start",
+                    ),
+                    background_color=rx.cond(
+                        State.test_correcto,
+                        "#132a13",  # Verde éxito
+                        "#3d2612"   # Marrón cálido para pista
+                    ),
+                    border=rx.cond(
+                        State.test_correcto,
+                        "1px solid #38b000",
+                        "1px solid #ff9f1c"
+                    ),
+                    border_radius="10px",
+                    padding="1.2em",
+                    width="100%",
+                    margin_top="1em"
+                )
+            ),
+            width="100%",
+            spacing="3",
+            align="start",
+        ),
+        width="100%",
+        margin_top="2em",
+        padding="1.5em",
+        border="1px solid #1f2937",
+        background_color="#111827",
+    )
+

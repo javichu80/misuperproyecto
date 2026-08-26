@@ -70,6 +70,86 @@ class State(rx.State):
     progreso: int = 0                    # Porcentaje total de progreso (0 a 100)
 
 
+
+    # --- VARIABLES PARA EL TEST INTERACTIVO HÍBRIDO (TEMA 1) ---
+    pregunta_test: str = "Escribe el número 13 en el sistema de numeración egipcio:"
+    opciones_test: list[str] = []
+    opcion_seleccionada: str = ""
+    opcion_correcta: str = ""   # <-- Ahora es dinámica y se lee del Markdown
+    mostrar_feedback_test: bool = False
+    test_correcto: bool = False
+    feedback_test: str = ""
+    feedback_correcto: str =""
+
+    def seleccionar_opcion(self, opcion: str):
+        """Mapea de forma segura la opción seleccionada por el alumno."""
+        self.opcion_seleccionada = opcion
+
+    async def verificar_respuesta_test(self):
+        """Valida la respuesta de forma híbrida: instantánea en Python, IA socrática si falla."""
+        if not self.opcion_seleccionada:
+            return
+
+        self.mostrar_feedback_test = True
+        
+        # En nuestro ejemplo, la respuesta correcta es la B
+        opcion_correcta = self.opcion_correcta  # <-- ¡Antes tenías self.opciones_test[1]!  # "B) Una herradura y tres varas"
+
+        if self.opcion_seleccionada == opcion_correcta:
+            self.test_correcto = True
+            self.feedback_test = self.feedback_correcto
+            
+            # Subimos el progreso del alumno de forma segura
+            if self.selected_lesson not in self.lecciones_completadas:
+                self.lecciones_completadas.append(self.selected_lesson)
+            
+            if self.lessons_list:
+                self.progreso = int((len(self.lecciones_completadas) / len(self.lessons_list)) * 100)
+        else:
+            self.test_correcto = False
+            self.feedback_test = "¡Casi lo tienes! Tu tutor STEM de la derecha te acaba de dejar una pista personalizada para ayudarte a razonar. ¡Lee el chat y vuelve a intentarlo! 💡 [3]"
+            
+            # ACTIVACIÓN DE LA IA EN SEGUNDO PLANO (Sólo si falla)
+            self.cargando_leccion = True
+            yield
+
+            # Le pedimos a Gemma una explicación adaptada al error del alumno sin revelar la respuesta directa
+            prompt_socratico = (
+                f"El alumno está resolviendo la lección activa y ha fallado la pregunta tipo test.\n"
+                f"Pregunta formulada: {self.pregunta_test}\n"
+                f"Opción elegida por el alumno (INCORRECTA): {self.opcion_seleccionada}\n"
+                f"Opción correcta que debió elegir: {opcion_correcta}\n\n"
+                f"Instrucción: Como tutor socrático de Matemáticas de 1º de ESO, dale una pista muy corta (máximo 3 líneas) y súper empática en el chat. "
+                f"Explícale sutilmente por qué la opción que ha marcado no es correcta (por ejemplo, recuérdale cuánto vale una herradura o qué símbolo se usa) "
+                f"para que pueda corregirse a sí mismo, pero NUNCA le digas de forma explícita cuál es la opción correcta."
+            )
+
+            try:
+                response = await ollama.AsyncClient().chat(
+                    model="gemma2:2b",
+                    messages=[
+                        {"role": "system", "content": "Eres un tutor de IA de Matemáticas especializado en educación socrática y empática para secundaria."},
+                        {"role": "user", "content": prompt_socratico}
+                    ]
+                )
+                pista_tutor = response["message"]["content"]
+                
+                # Inyectamos la pista del tutor directamente en el historial de lección del chat derecho
+                self.historial_leccion = self.historial_leccion + [
+                    (f"He marcado la opción: {self.opcion_seleccionada}", pista_tutor)
+                ]
+            except Exception as e:
+                print(f"Error en Ollama socrático: {e}")
+            
+            self.cargando_leccion = False
+            yield
+
+
+
+
+
+
+
     # =========================================================================
     # SETTERS EXPLÍCITOS (REQUISITO FUNDAMENTAL PARA REFLEX v0.9.X)
     # =========================================================================
@@ -127,28 +207,68 @@ class State(rx.State):
         
         self.cargar_contenido_leccion(self.selected_lesson)
 
-    def cargar_contenido_leccion(self, lesson_id: str):
-        """Cambia la lección activa y lee el archivo Markdown correspondiente."""
-        self.selected_lesson = lesson_id
-        lesson_file = "lesson_01.md"
-        metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
-        
-        if os.path.exists(metadata_path):
-            with open(metadata_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-                for l in data.get("lessons", []):
-                    if l.get("lesson_id") == lesson_id:
-                        lesson_file = l.get("file")
-                        break
 
-        file_path = f"courses/{self.selected_course}/{self.selected_topic}/{lesson_file}"
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                self.lesson_content = f.read()
-            self.historial_leccion = []
-        else:
-            self.lesson_content = f"# Error\nNo se pudo encontrar el archivo de teoría: `{lesson_file}`."
+    async def cargar_contenido_leccion(self, lesson_id: str):
+            """Cambia la lección activa, lee el archivo Markdown correspondiente y extrae el test dinámico."""
+            self.selected_lesson = lesson_id
+            lesson_file = "lesson_01.md"
+            metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
+            
+            # 1. PRESERVADO: Tu lógica original para buscar el archivo en el metadata.yaml
+            if os.path.exists(metadata_path):
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                    for l in data.get("lessons", []):
+                        if l.get("lesson_id") == lesson_id:
+                            lesson_file = l.get("file")
+                            break
 
+            file_path = f"courses/{self.selected_course}/{self.selected_topic}/{lesson_file}"
+            
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        raw_content = f.read()
+                    
+                    self.historial_leccion = []
+                    
+                    # 2. NUEVO: Separar la cabecera del test (Front-Matter) de la teoría (Markdown)
+                    import re
+                    # Buscamos el patrón de texto que está encerrado entre los primeros triples guiones (---)
+                    match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", raw_content, re.DOTALL)
+                    
+                    if match:
+                        # Extraemos y cargamos el YAML de la cabecera
+                        yaml_data = yaml.safe_load(match.group(1))
+                        # El grupo 2 es todo el texto de la teoría que va después del segundo ---
+                        self.lesson_content = match.group(2)
+                        
+                        # Asignamos las variables del test de forma 100% dinámica
+                        self.pregunta_test = yaml_data.get("pregunta_test", "Pregunta de control")
+                        self.opciones_test = yaml_data.get("opciones_test", [])
+                        self.opcion_correcta = yaml_data.get("opcion_correcta", "")
+                        # --- NUEVO: Extraemos la felicitación personalizada ---
+                        self.feedback_correcto = yaml_data.get(
+                            "feedback_correcto", 
+                            "¡Respuesta Correcta! 🎉 ¡Has comprendido perfectamente el concepto de la lección!"
+                    )
+                    else:
+                        # Si el archivo markdown no tiene cabecera de test, se comporta como antes (solo teoría)
+                        self.lesson_content = raw_content
+                        self.pregunta_test = "Lee atentamente la lección."
+                        self.opciones_test = []
+                        self.opcion_correcta = ""
+                        
+                except Exception as e:
+                    self.lesson_content = f"⚠️ Error al procesar el archivo de la lección: {str(e)}"
+            else:
+                self.lesson_content = f"# Error\nNo se pudo encontrar el archivo de teoría: `{lesson_file}`."
+
+            # 3. NUEVO: Limpieza de estado al cambiar de lección (Evita que queden respuestas marcadas)
+            self.opcion_seleccionada = ""
+            self.mostrar_feedback_test = False
+            self.test_correcto = False
+            self.feedback_test = ""
     # =========================================================================
     # EVENTO ON_LOAD COORDINADOR
     # =========================================================================
