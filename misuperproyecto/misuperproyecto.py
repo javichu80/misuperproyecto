@@ -7,7 +7,8 @@ from .components import (
     interfaz_tutor_ia,      # IA Genérica (DeepSeek - Al final)
     interfaz_tutor_leccion, # IA Contextual (Gemma - Arriba)
     login_admin, 
-    sidebar_lecciones
+    sidebar_lecciones,
+    seccion_entrega_actividad
 )
 from .state import State
 
@@ -47,9 +48,14 @@ def index() -> rx.Component:
                     # 2. Visor de Teoría Markdown - 48% de ancho en PC (para dar aire), 100% en móvil
                     rx.box(
                         rx.scroll_area(
-                            rx.markdown(
-                                State.lesson_content,
-                                color="black",
+                            rx.vstack( # <-- Añadimos un vstack para apilar el texto y el formulario
+                                rx.markdown(
+                                    State.lesson_content,
+                                    color="black",
+                                ),
+                                seccion_entrega_actividad(), # <-- ¡Aquí insertamos el formulario de entrega!
+                                width="100%",
+                                spacing="4",
                             ),
                             height="72vh",
                             scrollbars="vertical",

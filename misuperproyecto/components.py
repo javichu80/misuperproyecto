@@ -56,6 +56,18 @@ def sidebar_lecciones() -> rx.Component:
     """Sidebar que muestra el índice interactivo del Tema 1."""
     return rx.vstack(
         rx.heading("Tema 1: Números Naturales", size="5", color="white", margin_bottom="1.5em"),
+        # --- NUEVO: BARRA DE PROGRESO DEL ALUMNO ---
+        rx.vstack(
+            rx.hstack(
+                rx.text("Tu progreso del tema:", size="2", color="slate"),
+                rx.text(f"{State.progreso}%", size="2", weight="bold", color="indigo"),
+                width="100%",
+                justify="between"
+            ),
+            rx.progress(value=State.progreso, width="100%", color_scheme="indigo"),
+            margin_bottom="1.5em",
+            width="100%"
+        ),
         rx.vstack(
             rx.foreach(
                 State.lessons_list,
@@ -365,3 +377,88 @@ def login_admin() -> rx.Component:
         background=f"radial-gradient(circle at top, {rx.color('indigo', 3)}, {rx.color('slate', 2)})"
     )
 
+def seccion_entrega_actividad() -> rx.Component:
+    """Componente visual para que el alumno entregue su actividad y vea la corrección."""
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon(tag="notebook-pen", size=22, color="#6010DE"),
+                rx.heading("Ponte a prueba: Entrega tu solución", size="3", color="white"),
+                spacing="2",
+                align="center",
+            ),
+            rx.text(
+                "Escribe aquí abajo tu respuesta paso a paso al ejercicio de la sección 'Actividad' de arriba. "
+                "Tu tutor de IA lo evaluará al instante.",
+                size="2",
+                color="slate",
+            ),
+            rx.text_area(
+                placeholder="Ej: El número 13 en el sistema egipcio se escribe con una herradura (que vale 10) y tres varas (que valen 1 cada una)...",
+                value=State.respuesta_alumno,
+                on_change=State.set_respuesta_alumno,
+                width="100%",
+                height="100px",
+            ),
+            rx.button(
+                rx.cond(
+                    State.cargando_correccion, 
+                    rx.spinner(size="1"), 
+                    "Enviar para corregir"
+                ),
+                on_click=State.corregir_actividad,
+                disabled=State.cargando_correccion,
+                color_scheme="indigo",
+                width="100%",
+                style={"cursor": "pointer"}
+            ),
+            
+            # Mostrar la corrección inteligente del tutor de forma condicional si no está vacía
+            rx.cond(
+                State.correccion_tutor != "",
+                rx.box(
+                    rx.vstack(
+                        rx.hstack(
+                            rx.cond(
+                                State.ultimo_resultado_correcto,
+                                rx.icon(tag="circle-check", color="#38b000"),
+                                rx.icon(tag="circle-alert", color="#ff9f1c")
+                            ),
+                            rx.heading(
+                                rx.cond(State.ultimo_resultado_correcto, "¡Excelente resolución!", "Indicación del Tutor"),
+                                size="2"
+                            ),
+                            spacing="2",
+                            align="center"
+                        ),
+                        rx.text(State.correccion_tutor, size="2", color="white"),
+                        spacing="2",
+                        align="start",
+                    ),
+                    # Cambia de color dinámicamente si es correcto (verde oscuro) o hay que repasar (marrón cálido)
+                    background_color=rx.cond(
+                        State.ultimo_resultado_correcto,
+                        "#132a13",  # Verde éxito
+                        "#3d2612"   # Naranja/marrón repaso
+                    ),
+                    border=rx.cond(
+                        State.ultimo_resultado_correcto,
+                        "1px solid #38b000",
+                        "1px solid #ff9f1c"
+                    ),
+                    border_radius="10px",
+                    padding="1.2em",
+                    width="100%",
+                    margin_top="1em"
+                )
+            ),
+            width="100%",
+            spacing="3",
+            align="start",
+        ),
+        width="100%",
+        margin_top="2em",
+        padding="1.5em",
+        border="1px solid #1f2937",
+        background_color="#111827",
+    )
