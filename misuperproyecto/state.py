@@ -1,3 +1,4 @@
+import re
 import os
 import yaml
 import reflex as rx
@@ -365,27 +366,41 @@ class State(rx.State):
         yield
 
         # 1. Definimos las instrucciones de rol y comportamiento socrático
+        # =========================================================================
+        # 1. SYSTEM PROMPT: Pedagogía Socrática + Reglas Estrictas de LaTeX
+        # =========================================================================
         system_prompt = (
             "Eres un tutor de Inteligencia Artificial especializado en STEM para alumnos de 1º de ESO. "
             "Tu objetivo es guiar al estudiante de manera socrática, explicándole paso a paso sin darle la solución directa, "
-            "haciendo preguntas de control y usando ejemplos cotidianos para facilitar la comprensión.\n"
+            "haciendo preguntas de control y usando ejemplos cotidianos para facilitar la comprensión.\n\n"
             "Sigue estas reglas estrictas de conducta pedagógica:\n"
             "1. NUNCA le des la solución directa de los ejercicios o actividades al alumno. "
             "Si te pide un resultado, ofrécele pistas, hazle preguntas guía o divide el problema en partes más sencillas para que él descubra la solución.\n"
             "2. Si el alumno te pregunta algo fuera de tema o del contexto de la lección activa (como preguntas genéricas sobre la Luna), "
-            "busca una relación creativa o divertida para reconducir la conversación hacia las matemáticas o hacia el tema de la lección activa."
+            "busca una relación creativa o divertida para reconducir la conversación hacia las matemáticas o hacia el tema de la lección activa.\n\n"
+            "REGLAS DE FORMATO MATEMÁTICO OBLIGATORIAS (CALIDAD DE LIBRO DE TEXTO):\n"
+            "- NUNCA uses texto plano o barras inclinadas corrientes de teclado para fórmulas (prohibido escribir 'x / y' o '(x/10)').\n"
+            "- Usa SIEMPRE sintaxis LaTeX real para representar fracciones, operaciones, potencias y ecuaciones.\n"
+            "- Para representar fracciones en texto o inline, usa SIEMPRE la expresión '$\\frac{numerador}{denominador}$' (ejemplo: '$\\frac{x}{10}$').\n"
+            "- Para ecuaciones o fórmulas grandes que vayan en su propia línea, colócalas obligatoriamente en bloques independientes con doble símbolo de dólar y saltos de línea:\n"
+            "$$\n"
+            "\\frac{x}{\\text{Cantidad total}}\n"
+            "$$\n"
+            "- Para variables o números sencillos dentro de una frase, usa símbolos de dólar simples: $x$ o $y$.\n"
+            "- NUNCA utilices bloques de código con triple comilla (como ```math o ```latex) para envolver las fórmulas."
         )
 
-        # 2. Inyectamos dinámicamente el contenido Markdown de la lección que el alumno está estudiando
+        # 2. Inyectamos dinámicamente el contenido Markdown de la lección activa
         contexto_leccion = (
             f"El alumno está estudiando actualmente la lección:\n"
             f"=== CONTENIDO DE LA LECCIÓN ===\n"
             f"{self.lesson_content}\n"
             f"================================\n\n"
-            f"Responde de forma guiada apoyándote estrictamente en este contenido teórico."
-            f"y aplicando de forma rigurosa tus pautas de profesor socrático."
+            f"Responde de forma guiada apoyándote estrictamente en este contenido teórico, "
+            f"aplicando de forma rigurosa tus pautas de profesor socrático y las reglas de formato LaTeX."
         )
 
+        # 3. Construimos el array de mensajes para la API
         messages_api = [
             {"role": "system", "content": f"{system_prompt}\n\n{contexto_leccion}"}
         ]
@@ -411,23 +426,17 @@ class State(rx.State):
             respuesta_gemma = response["message"]["content"]
 
             # =========================================================================
-            # TRUCO DE SANEAMIENTO: Traducimos delimitadores de Ollama a Markdown estándar
+            # 🛡️ ESCUDO REGEX DEFINITIVO: Sanea cualquier combinación de barras y espacios
             # =========================================================================
-            respuesta_tutor_saneada = (
-                respuesta_gemma
-                # 1. Primero saneamos variantes de bloque con espacios (para no dejar espacios huérfanos)
-                .replace("\\[ ", "\n$$\n")
-                .replace(" \\]", "\n$$\n")
-                # 2. Saneamos bloques estándar (forzando que las $$ vayan en línea propia)
-                .replace("\\[", "\n$$\n")
-                .replace("\\]", "\n$$\n")
-                # 3. Saneamos variantes inline con espacios
-                .replace("\\( ", "$")
-                .replace(" \\)", "$")
-                # 4. Saneamos variantes inline estándar
-                .replace("\\(", "$")
-                .replace("\\)", "$")
-            )
+            # 1. Saneamos bloques grandes: \\[ ... \\] o \\\\[ ... \\\\ ] -> \n$$\n
+            respuesta_tutor_saneada = re.sub(r"\\+\[\s*", "\n$$\n", respuesta_gemma)
+            respuesta_tutor_saneada = re.sub(r"\s*\\+\]", "\n$$\n", respuesta_tutor_saneada)
+            
+            # 2. Saneamos fórmulas inline: \\( ... \\) o \\\\( ... \\\\) -> $
+            respuesta_tutor_saneada = re.sub(r"\\+\(\s*", "$", respuesta_tutor_saneada)
+            respuesta_tutor_saneada = re.sub(r"\s*\\+\)", "$", respuesta_tutor_saneada)
+            # =========================================================================
+            
             
             # Reemplazamos quirúrgicamente el "Pensando..." por la respuesta final estructurada de Gemma
             self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_tutor_saneada)]
