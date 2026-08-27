@@ -10,10 +10,10 @@ from .components import (
     sidebar_lecciones,
     seccion_entrega_actividad,
     seccion_test_hibrido
+
 )
 from .state import State
-
-COLOR_FONDO = "#4E6AC0"  # Unificamos con el tono oscuro profundo "Dark STEM" de tu paleta
+from .styles import COLOR_FONDO
 
 def index() -> rx.Component:
     return rx.cond(
@@ -52,7 +52,7 @@ def index() -> rx.Component:
                             rx.vstack( # <-- Añadimos un vstack para apilar el texto y el formulario
                                 rx.markdown(
                                     State.lesson_content,
-                                    color="black",
+                                    color="#F1F5F9",
                                 ),
                                 seccion_test_hibrido(), # <-- ¡Aquí insertamos el formulario de entrega!
                                 width="100%",
@@ -61,10 +61,17 @@ def index() -> rx.Component:
                             height="72vh",
                             scrollbars="vertical",
                         ),
+                        # -------------------------------------------------------------
+                        # CAMBIO 2: Estilos Dark STEM translúcidos (Glassmorphism)
+                        # -------------------------------------------------------------
                         padding="1.5em",
-                        background=rx.color("slate", 2),
-                        border_radius="15px",
-                        border=f"1px solid {rx.color('slate', 4)}",
+                        background="rgba(30, 41, 59, 0.45)",            # Fondo gris pizarra con 45% de transparencia
+                        backdrop_filter="blur(8px)",                     # Desenfoque de fondo
+                        border_radius="16px",                            # Esquinas suaves de tablet flotante
+                        border="1px solid rgba(255, 255, 255, 0.08)",    # Borde fino de alta tecnología
+                        box_shadow="0 8px 32px 0 rgba(0, 0, 0, 0.3)",    # Sombra de profundidad
+                        
+                        # Mantenemos intactas tus dimensiones originales para que la web siga siendo responsive
                         width=["100%", "100%", "56%"],
                         margin_x=["0em", "0em", "1%"],
                         margin_bottom=["1.5em", "1.5em", "0em"],
@@ -164,10 +171,11 @@ def index() -> rx.Component:
                 margin_bottom="3em",
             ),
             
-            background_color=COLOR_FONDO,
+            backgroundImage = COLOR_FONDO,
             min_height="100vh",
             width="100%",
             spacing="0",
+            
         ),
         # --- VISTA 2: LOGIN ---
         login_admin()
@@ -175,7 +183,11 @@ def index() -> rx.Component:
     
 
 # Configuración e inicialización de tu aplicación Reflex
-app = rx.App()
+app = rx.App(
+    stylesheets=[
+        "https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css",
+    ]
+)
 app.add_page(index, on_load=State.iniciar_pagina)
 
 

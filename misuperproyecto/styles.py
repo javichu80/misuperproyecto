@@ -3,10 +3,19 @@ import reflex as rx
 # 1. Definición de la Paleta de Colores y Constantes
 COLOR_BLANCO_PURO = "#FFFFFF"
 COLOR_BRANDNAME = "#E5E6ED"
-COLOR_FONDO = "#1F3065"  # Un tono oscuro profundo para el modo "Dark STEM"
+COLOR_FONDO = "radial-gradient(circle at top,#334155 0%,#1e293b 20%,#0f172a 55%,#020617 100%)"
 COLOR_PRIMARIO = 'indigo' 
 COLOR_SECUNDARIO = "white"
-COLOR_TEXTO = rx.color("slate", 12)
+
+COLOR_PANEL = "rgba(15,23,42,0.85)"
+
+COLOR_CARD = "rgba(30,41,59,0.90)"
+
+COLOR_TEXTO = "#F8FAFC"
+
+COLOR_TEXTO_SECUNDARIO = "#CBD5E1"
+
+COLOR_BORDE = "rgba(255,255,255)"
 
 # 2. Estilos comunes reutilizables (DRY: Don't Repeat Yourself)
 estilo_base_tarjeta = {

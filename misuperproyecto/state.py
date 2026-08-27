@@ -409,9 +409,28 @@ class State(rx.State):
                 messages=messages_api,
             )
             respuesta_gemma = response["message"]["content"]
+
+            # =========================================================================
+            # TRUCO DE SANEAMIENTO: Traducimos delimitadores de Ollama a Markdown estándar
+            # =========================================================================
+            respuesta_tutor_saneada = (
+                respuesta_gemma
+                # 1. Primero saneamos variantes de bloque con espacios (para no dejar espacios huérfanos)
+                .replace("\\[ ", "\n$$\n")
+                .replace(" \\]", "\n$$\n")
+                # 2. Saneamos bloques estándar (forzando que las $$ vayan en línea propia)
+                .replace("\\[", "\n$$\n")
+                .replace("\\]", "\n$$\n")
+                # 3. Saneamos variantes inline con espacios
+                .replace("\\( ", "$")
+                .replace(" \\)", "$")
+                # 4. Saneamos variantes inline estándar
+                .replace("\\(", "$")
+                .replace("\\)", "$")
+            )
             
             # Reemplazamos quirúrgicamente el "Pensando..." por la respuesta final estructurada de Gemma
-            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_gemma)]
+            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_tutor_saneada)]
         except Exception as e:
             error_msg = "⚠️ No he podido conectar con Gemma local. Comprueba que Ollama está activo (`ollama run gemma`)."
             # Si falla, reemplazamos el "Pensando..." por el mensaje de error amigable
@@ -553,9 +572,29 @@ class State(rx.State):
                         respuesta = f"⚠️ Error en Hugging Face: {msg_error}"
             else:
                 respuesta = "⚠️ No se ha encontrado la variable 'HUGGINGFACE_TOKEN' en tu archivo .env."
+
+                   # =========================================================================
+            # 🛠️ NUEVO: SANEAMIENTO DE DELIMITADORES DE FÓRMULAS (LÍNEA CRÍTICA)
+            # =========================================================================
+            respuesta_saneada = (
+                respuesta
+                # 1. Primero saneamos variantes de bloque con espacios (para no dejar espacios huérfanos)
+                .replace("\\[ ", "\n$$\n")
+                .replace(" \\]", "\n$$\n")
+                # 2. Saneamos bloques estándar (forzando que las $$ vayan en línea propia)
+                .replace("\\[", "\n$$\n")
+                .replace("\\]", "\n$$\n")
+                # 3. Saneamos variantes inline con espacios
+                .replace("\\( ", "$")
+                .replace(" \\)", "$")
+                # 4. Saneamos variantes inline estándar
+                .replace("\\(", "$")
+                .replace("\\)", "$")
+            )
+            # =========================================================================
             
             # Reemplazamos el estado de "Pensando..." por la respuesta final de Hugging Face
-            self.historial_chat = self.historial_chat[:-1] + [(pregunta, respuesta)]
+            self.historial_chat = self.historial_chat[:-1] + [(pregunta, respuesta_saneada)]
         except Exception as e:
             self.historial_chat = self.historial_chat[:-1] + [(pregunta, f"⚠️ Error al conectar con Hugging Face: {str(e)}")]
         

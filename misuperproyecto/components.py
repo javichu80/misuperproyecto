@@ -2,7 +2,7 @@ import reflex as rx
 from rxconfig import config
 from .state import State
 from .models import Materia
-from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO, COLOR_BRANDNAME
+from .styles import estilo_base_tarjeta, estilo_boton_compra, COLOR_PRIMARIO, COLOR_BRANDNAME, COLOR_BORDE, COLOR_PANEL
 
 # =========================================================================
 # COMPONENTE 1: NAVBAR SUPERIOR INTEGRADO
@@ -59,14 +59,22 @@ def sidebar_lecciones() -> rx.Component:
         # --- NUEVO: BARRA DE PROGRESO DEL ALUMNO ---
         rx.vstack(
             rx.hstack(
-                rx.text("Tu progreso del tema:", size="2", color="slate"),
-                rx.text(f"{State.progreso}%", size="2", weight="bold", color="indigo"),
+                rx.text("Tu progreso del tema:", size="2", color="#94A3B8"),
+                rx.text(f"{State.progreso}%", size="2", weight="bold", color="#818CF8"),
                 width="100%",
                 justify="between"
             ),
-            rx.progress(value=State.progreso, width="100%", color_scheme="indigo"),
+            rx.box(
+                rx.progress(value=State.progreso, width="100%", color_scheme="indigo", border_radius="9999px"),
+                width="100%",
+                background="rgba(255, 255, 255, 0.04)",       # Fondo sutil del carril
+                border="1px solid rgba(255, 255, 255, 0.12)",   # Borde blanco translúcido visible al 0%
+                border_radius="9999px",                       # Formato de píldora redondeada
+                padding="3px",                                  # Pequeño margen para que la barra "flote" dentro   
+            ),
             margin_bottom="1.5em",
             width="100%"
+            
         ),
         rx.vstack(
             rx.foreach(
@@ -77,23 +85,42 @@ def sidebar_lecciones() -> rx.Component:
                     width="100%",
                     color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
                     variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
-                    style={
+                   
+                    # === TRUCO DE ORO: Evita el desborde de texto en los botones ===
+                    
+                    style = {
+                        "height":"auto",  # Permite al botón crecer verticalmente si hay salto de línea
                         "justify-content": "start",
-                        "white-space": "normal",
-                        "text-align": "left",
-                        "padding_y": "1.5em",
-                        "cursor": "pointer"
+                        "white-space": "normal", # Permite que el texto salte de línea si es largo
+                        "text-align": "left",  # Alineación de texto elegante para lectura
+                        "padding_y": "1em",
+                        "padding_x": "1em",
+                        "cursor": "pointer",
+                        "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), # <-- Fuerza contraste
                     }
-                )
+                ),
             ),
             width="100%",
             spacing="2",
         ),
-        width="100%",
+        # =========================================================================
+        # ESTILOS RESPONSIVOS PARA EL CONTENEDOR (Móvil vs Escritorio)
+        # =========================================================================
+        # [Móvil, Escritorio] -> 100% en móvil, 280px fijo en pantallas grandes
+        width=["100%", "100%", "280px"],
+        
+        # Centra los elementos en móvil, los alinea a la izquierda en escritorio
+        align_items=["center", "center", "stretch"], 
+        
+        height="auto" if ["100%", "100%", "100%"] else "100%", # Ajuste de altura responsiva
         padding="1.5em",
-        border_right=f"1px solid {rx.color('slate', 4)}",
-        height="100%",
-    )
+        background="rgba(30, 41, 59, 0.45)",
+        backdrop_filter="blur(8px)",
+        border="1px solid rgba(255, 255, 255, 0.08)",
+        box_shadow="0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+        border_radius="16px",
+        margin_bottom=["1.5em", "1.5em", "0"], # Añade separación abajo sólo en móviles
+        )
 
 # =========================================================================
 # COMPONENTE 3: BURBUJAS DE CONVERSACIÓN DE CHAT
@@ -110,6 +137,7 @@ def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
             border_radius="18px 18px 0px 18px",
             align_self="end",
             max_width="80%",
+            box_shadow="0px 4px 15px rgba(96, 16, 222, 0.25)", # Sutil aura luminosa morada
         ),
         # 2. BURBUJA DEL TUTOR (A la izquierda, blanca, con formato Markdown: interaccion[1])
         # Solo se muestra si tiene contenido (evitando globos vacíos al inicio)
@@ -118,14 +146,20 @@ def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
             rx.box(
                 rx.markdown(
                     interaccion[1], 
-                    color="black"
+                    color="#F1F5F9",
+                    # =========================================================
+                    #  LA SOLUCIÓN: Activamos el soporte matemático nativo
+                    # =========================================================
+                    math=True, 
                 ),
-                background_color="white",
+               # === CAMBIO: Cristal esmerilado oscuro con borde fino ===
+                background_color="rgba(30, 41, 59, 0.65)", 
+                border="1px solid rgba(255, 255, 255, 0.08)",
                 padding="0.8em 1.2em",
                 border_radius="18px 18px 18px 0px",
                 align_self="start",
                 max_width="80%",
-                box_shadow="0px 2px 5px rgba(0,0,0,0.05)",
+                box_shadow="0px 4px 20px rgba(0, 0, 0, 0.2)",
             ),
         ),
         width="100%",
@@ -149,8 +183,10 @@ def interfaz_tutor_leccion() -> rx.Component:
             height="350px",
             width="100%",
             padding="1em",
-            border=f"1px solid {rx.color('slate', 4)}",
-            border_radius="10px",
+            #  AÑADE ESTO (Línea translúcida ultra sutil):
+            border="1px solid rgba(255, 255, 255, 0.04)",
+            border_radius="12px",
+            background="rgba(15, 23, 42, 0.2)", # Ligera base oscura para agrupar mensajes
         ),
         rx.hstack(
             rx.input(
