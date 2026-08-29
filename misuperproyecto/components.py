@@ -55,11 +55,11 @@ def navbar() -> rx.Component:
 def sidebar_lecciones() -> rx.Component:
     """Sidebar que muestra el índice interactivo del Tema 1."""
     return rx.vstack(
-        rx.heading("Tema 1: Números Naturales", size="5", color="white", margin_bottom="1.5em"),
+        rx.heading("Tema 1: Números Naturales", size="5", color="#E2E8F0", margin_bottom="1.5em"),
         # --- NUEVO: BARRA DE PROGRESO DEL ALUMNO ---
         rx.vstack(
             rx.hstack(
-                rx.text("Tu progreso del tema:", size="2", color="#94A3B8"),
+                rx.text("Tu progreso del tema:", size="2", color="#CBD5E1"),
                 rx.text(f"{State.progreso}%", size="2", weight="bold", color="#818CF8"),
                 width="100%",
                 justify="between"
@@ -83,6 +83,8 @@ def sidebar_lecciones() -> rx.Component:
                     lesson.title,  # Acceso por puntos oficial de dataclass
                     on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
                     width="100%",
+                    padding_y ="1em",
+                    padding_x ="1em",
                     color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
                     variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
                    
@@ -93,8 +95,6 @@ def sidebar_lecciones() -> rx.Component:
                         "justify-content": "start",
                         "white-space": "normal", # Permite que el texto salte de línea si es largo
                         "text-align": "left",  # Alineación de texto elegante para lectura
-                        "padding_y": "1em",
-                        "padding_x": "1em",
                         "cursor": "pointer",
                         "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), # <-- Fuerza contraste
                     }

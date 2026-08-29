@@ -4,6 +4,25 @@ import yaml
 import reflex as rx
 import ollama
 import httpx
+import chromadb
+import httpx
+import json
+
+# === EVITA EL PÁNICO DE RUST: Conexión única compartida a ChromaDB ===
+_CHROMA_COLLECTION = None
+
+def obtener_coleccion_chroma():
+    global _CHROMA_COLLECTION
+    if _CHROMA_COLLECTION is None:
+        import chromadb
+        
+        # Usamos la ruta absoluta real para que no haya pérdida posible
+        db_path = "/home/javichu/chroma_db"
+        client = chromadb.PersistentClient(path=db_path)
+        _CHROMA_COLLECTION = client.get_collection(name="solucionario_anaya_1eso")
+    return _CHROMA_COLLECTION
+# =====================================================================
+
 from .models import Materia
 from dotenv import load_dotenv
 from sqlmodel import select
@@ -47,7 +66,7 @@ class State(rx.State):
     esta_cargando: bool = False
 
     # =========================================================================
-    # VARIABLES DE IA DE ESTUDIO (GEMMA - CONTEXTO LECCIÓN)
+    # VARIABLES DE IA DE ESTUDIO (LLAMA - CONTEXTO LECCIÓN)
     # =========================================================================
     historial_leccion: list[tuple[str, str]] = []
     pregunta_leccion: str = ""
@@ -64,7 +83,7 @@ class State(rx.State):
 
     # --- VARIABLES DE ACTIVIDAD Y PROGRESO (SPRINT 3) ---
     respuesta_alumno: str = ""           # Captura el texto del formulario de entrega
-    correccion_tutor: str = ""           # Almacena el feedback constructivo de Gemma
+    correccion_tutor: str = ""           # Almacena el feedback constructivo de LLAMA
     cargando_correccion: bool = False    # Controla el spinner del botón de entrega
     ultimo_resultado_correcto: bool = False  # Para dar estilo verde (correcto) o marrón (repasar)
     lecciones_completadas: list[str] = [] # Almacena las IDs de las lecciones resueltas con éxito
@@ -114,7 +133,7 @@ class State(rx.State):
             self.cargando_leccion = True
             yield
 
-            # Le pedimos a Gemma una explicación adaptada al error del alumno sin revelar la respuesta directa
+            # Le pedimos a LLAMA una explicación adaptada al error del alumno sin revelar la respuesta directa
             prompt_socratico = (
                 f"El alumno está resolviendo la lección activa y ha fallado la pregunta tipo test.\n"
                 f"Pregunta formulada: {self.pregunta_test}\n"
@@ -133,7 +152,17 @@ class State(rx.State):
                         {"role": "user", "content": prompt_socratico}
                     ]
                 )
-                pista_tutor = response["message"]["content"]
+
+                # ==========================================
+                # 🛠️ PASO 2: EXTRACCIÓN ULTRA-SEGURA DE OLLAMA
+                # ==========================================
+                if hasattr(response, "message"):
+                    pista_tutor = response.message.content
+                elif isinstance(response, dict) and "message" in response:
+                    pista_tutor = response["message"]["content"]
+                else:
+                    pista_tutor = str(response)
+                # ==========================================
                 
                 # Inyectamos la pista del tutor directamente en el historial de lección del chat derecho
                 self.historial_leccion = self.historial_leccion + [
@@ -141,6 +170,15 @@ class State(rx.State):
                 ]
             except Exception as e:
                 print(f"Error en Ollama socrático: {e}")
+                # ✅ Revelamos el error real en el chat de la derecha para saber qué falla
+                self.historial_leccion = self.historial_leccion + [
+                    (
+                        f"He marcado la opción: {self.opcion_seleccionada}", 
+                        f"⚠️ **Error del Tutor STEM:** No se pudo obtener la pista de Ollama.\n\n"
+                        f"*Detalle técnico del error:* `{str(e)}`\n\n"
+                        f"Por favor, comprueba que Ollama está activo y que el modelo está descargado."
+                    )
+                ]
             
             self.cargando_leccion = False
             yield
@@ -191,7 +229,7 @@ class State(rx.State):
     # =========================================================================
     # EVENTOS DE NAVEGACIÓN Y CARGA DE CONTENIDOS
     # =========================================================================
-    def cargar_estructura_lecciones(self):
+    async def cargar_estructura_lecciones(self):
         """Lee metadata.yaml y carga la lista de lecciones del Tema 1."""
         metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
         if os.path.exists(metadata_path):
@@ -206,7 +244,7 @@ class State(rx.State):
             except Exception as e:
                 print(f"Error cargando metadatos: {e}")
         
-        self.cargar_contenido_leccion(self.selected_lesson)
+        await self.cargar_contenido_leccion(self.selected_lesson)
 
 
     async def cargar_contenido_leccion(self, lesson_id: str):
@@ -273,10 +311,10 @@ class State(rx.State):
     # =========================================================================
     # EVENTO ON_LOAD COORDINADOR
     # =========================================================================
-    def iniciar_pagina(self):
+    async def iniciar_pagina(self):
         """Inicializa tanto la base de datos de SQLModel como el cargador de Markdown."""
         self.cargar_materias()
-        self.cargar_estructura_lecciones()
+        await self.cargar_estructura_lecciones()
 
     def cargar_materias(self):
         """Carga todas las materias existentes en la base de datos."""
@@ -355,7 +393,7 @@ class State(rx.State):
     # LÓGICA CHAT 1: TUTOR DE LECCIÓN CONTEXTUAL (OLLAMA LOCAL)
     # =========================================================================
     async def preguntar_tutor_leccion(self):
-        """Inyecta la teoría en Gemma (Ollama) para guiar socráticamente al alumno."""
+        """Inyecta la teoría en llama (Ollama) para guiar socráticamente al alumno."""
         if not self.pregunta_leccion.strip():
             return
 
@@ -365,9 +403,89 @@ class State(rx.State):
         self.cargando_leccion = True
         yield
 
+         # =========================================================================
+        # 1. BÚSQUEDA INTELIGENTE EN CHROMADB (RAG LIGHTWEIGHT & DIAGNÓSTICO)
+        # =========================================================================
+        contexto_solucionario = ""
+        try:
+            # Reutilizamos la conexión global segura
+            collection = obtener_coleccion_chroma()
+            
+            # Petición HTTP asíncrona a Ollama para embeddings
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "http://localhost:11434/api/embeddings",
+                    json={"model": "all-minilm", "prompt": pregunta_alumno}
+                )
+                
+                # Si Ollama devuelve un error HTTP, lo capturamos e imprimimos
+                if response.status_code != 200:
+                    print(f"❌ Error de Ollama (Código {response.status_code}): {response.text}")
+                    raise ValueError(f"Ollama respondió con error {response.status_code}")
+                
+                res_json = response.json()
+                # ¡ESTO IMPRIMIRÁ LA RESPUESTA REAL EN TU TERMINAL PARA VER QUÉ PASA!
+                print(f"🔍 [DIAGNÓSTICO OLLAMA] Respuesta recibida: {res_json}")
+                
+                # Intentamos extraer el vector de forma segura (soporta varios formatos)
+                if "embedding" in res_json:
+                    query_vector = res_json["embedding"]
+                elif "embeddings" in res_json and isinstance(res_json["embeddings"], list):
+                    # Si viene como lista de listas, extraemos el primer elemento
+                    query_vector = res_json["embeddings"][0] if isinstance(res_json["embeddings"][0], list) else res_json["embeddings"]
+                else:
+                    raise KeyError(f"No se encontró la clave del vector. Claves disponibles: {list(res_json.keys())}")
+            
+            # --- DETECTOR DE PÁGINAS ---
+            filtro_pagina = None
+            match_pag = re.search(r"p[áa]g(?:ina)?\s*(\d+)", pregunta_alumno, re.IGNORECASE)
+            if match_pag:
+                filtro_pagina = int(match_pag.group(1))
+                print(f"🎯 Detector: El alumno ha pedido la página física: {filtro_pagina}")
+
+            # Realizamos la consulta a ChromaDB
+            if filtro_pagina is not None:
+                results = collection.query(
+                    query_embeddings=[query_vector],
+                    n_results=1,
+                    where={"page": filtro_pagina}
+                )
+            else:
+                results = collection.query(
+                    query_embeddings=[query_vector],
+                    n_results=2
+                )
+            
+            # Normalizador de dimensiones seguro (¡tu versión excelente!)
+            if results and results.get("documents"):
+                docs = results["documents"]
+                metas = results["metadatas"]
+                
+                if docs and isinstance(docs[0], list):
+                    docs = docs[0]
+                if metas and isinstance(metas[0], list):
+                    metas = metas[0]
+                
+                if docs:
+                    contexto_solucionario = "\n=== CONTEXTO DEL SOLUCIONARIO DE ANAYA (SÓLO PARA TU CONOCIMIENTO) ===\n"
+                    for doc, metadata in zip(docs, metas):
+                        pag_num = "desconocida"
+                        if isinstance(metadata, dict):
+                            pag_num = metadata.get("page", "desconocida")
+                        contexto_solucionario += f"[PÁGINA {pag_num} del Solucionario]: {doc}\n\n"
+                    
+                    contexto_solucionario += "========================================================================\n\n"
+                    print(f"📖 RAG exitoso: Páginas recuperadas para la respuesta: {metas}")
+
+        except Exception as e:
+            print(f"⚠️ Alerta RAG: No se pudo consultar ChromaDB: {e}")
+            contexto_solucionario = ""
+
+
+
         # 1. Definimos las instrucciones de rol y comportamiento socrático
         # =========================================================================
-        # 1. SYSTEM PROMPT: Pedagogía Socrática + Reglas Estrictas de LaTeX
+        # 2. SYSTEM PROMPT: Pedagogía Socrática + Reglas Estrictas de LaTeX
         # =========================================================================
         system_prompt = (
             "Eres un tutor de Inteligencia Artificial especializado en STEM para alumnos de 1º de ESO. "
@@ -390,14 +508,20 @@ class State(rx.State):
             "- NUNCA utilices bloques de código con triple comilla (como ```math o ```latex) para envolver las fórmulas."
         )
 
-        # 2. Inyectamos dinámicamente el contenido Markdown de la lección activa
+        # =========================================================================
+        # 3. CONTEXTO DE LA LECCIÓN: Inyectamos teoría del tema y hojas del solucionario
+        # =========================================================================
         contexto_leccion = (
             f"El alumno está estudiando actualmente la lección:\n"
             f"=== CONTENIDO DE LA LECCIÓN ===\n"
             f"{self.lesson_content}\n"
             f"================================\n\n"
-            f"Responde de forma guiada apoyándote estrictamente en este contenido teórico, "
-            f"aplicando de forma rigurosa tus pautas de profesor socrático y las reglas de formato LaTeX."
+            f"{contexto_solucionario}" # Inyectamos las páginas de matemáticas rescatadas de ChromaDB
+            f"INSTRUCCIÓN ADICIONAL:\n"
+            f"Responde apoyándote estrictamente en el contenido teórico y en las páginas provistas del solucionario.\n"
+            f"No le digas directamente la solución del libro, pero guíale usando los mismos pasos que explica el solucionario "
+            f"y menciónale sutilmente de qué página del solucionario oficial procede la ayuda (ej: 'Si miramos la explicación de la página 14...')."
+        
         )
 
         # 3. Construimos el array de mensajes para la API
@@ -405,7 +529,9 @@ class State(rx.State):
             {"role": "system", "content": f"{system_prompt}\n\n{contexto_leccion}"}
         ]
 
-        # 3. CONTEXTO SEGURO: Añadimos el historial reciente ANTES de meter el "Pensando..."
+        # =========================================================================
+        # 4. HISTORIAL RECIENTE: Para mantener el hilo del diálogo pedagógico
+        # =========================================================================
         for prev_preg, prev_resp in self.historial_leccion[-3:]:
             messages_api.append({"role": "user", "content": prev_preg})
             messages_api.append({"role": "assistant", "content": prev_resp})
@@ -413,38 +539,60 @@ class State(rx.State):
         # Añadimos la pregunta actual del alumno al mensaje de la API
         messages_api.append({"role": "user", "content": pregunta_alumno})
 
-        # 4. UX INSTANTÁNEA: Mostramos la pregunta y el globo "Pensando..." en la pantalla inmediatamente
+        # 5. UX INSTANTÁNEA: Mostramos la pregunta y el globo "Pensando..." en la pantalla inmediatamente
         self.historial_leccion = self.historial_leccion + [(pregunta_alumno, "Pensando...")]
         yield
 
-        # 5. LLAMADA ASÍNCRONA A OLLAMA
+        # =========================================================================
+        # 6. LLAMADA ASÍNCRONA CON STREAMING CONTROLADO (CERO AGOTAMIENTO)
+        # =========================================================================
         try:
-            response = await ollama.AsyncClient().chat(
-                model="gemma2:2b",
-                messages=messages_api,
-            )
-            respuesta_gemma = response["message"]["content"]
+            # Conectamos con el puerto de Ollama en modo stream
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream(
+                    "POST",
+                    "http://localhost:11434/api/chat",
+                    json={
+                        "model": "gemma2:2b",
+                        "messages": messages_api,
+                        "stream": True,
+                    }
+                ) as response_stream:
+                    
+                    respuesta_acumulada = ""
+                    contador_tokens = 0
+                    
+                    # Leemos los datos conforme Ollama los va escupiendo
+                    async for line in response_stream.aiter_lines():
+                        if not line:
+                            continue
+                        
+                        # Decodificamos el JSON de la línea recibida
+                        chunk = json.loads(line)
+                        content = chunk.get("message", {}).get("content", "")
+                        respuesta_acumulada += content
+                        contador_tokens += 1
+                        
+                        # Saneamos delimiters de matemáticas inline y bloques
+                        respuesta_saneada = re.sub(r"\\+\[\s*", "\n$$\n", respuesta_acumulada)
+                        respuesta_saneada = re.sub(r"\s*\\+\]", "\n$$\n", respuesta_saneada)
+                        respuesta_saneada = re.sub(r"\\+\(\s*", "$", respuesta_saneada)
+                        respuesta_saneada = re.sub(r"\s*\\+\)", "$", respuesta_saneada)
+                        
+                        # Actualizamos la pantalla cada 8 tokens para que la CPU respire
+                        if contador_tokens % 8 == 0:
+                            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_saneada)]
+                            yield
+            
+            # Forzamos el volcado del mensaje final completo
+            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_saneada)]
+            yield
 
-            # =========================================================================
-            # 🛡️ ESCUDO REGEX DEFINITIVO: Sanea cualquier combinación de barras y espacios
-            # =========================================================================
-            # 1. Saneamos bloques grandes: \\[ ... \\] o \\\\[ ... \\\\ ] -> \n$$\n
-            respuesta_tutor_saneada = re.sub(r"\\+\[\s*", "\n$$\n", respuesta_gemma)
-            respuesta_tutor_saneada = re.sub(r"\s*\\+\]", "\n$$\n", respuesta_tutor_saneada)
-            
-            # 2. Saneamos fórmulas inline: \\( ... \\) o \\\\( ... \\\\) -> $
-            respuesta_tutor_saneada = re.sub(r"\\+\(\s*", "$", respuesta_tutor_saneada)
-            respuesta_tutor_saneada = re.sub(r"\s*\\+\)", "$", respuesta_tutor_saneada)
-            # =========================================================================
-            
-            
-            # Reemplazamos quirúrgicamente el "Pensando..." por la respuesta final estructurada de Gemma
-            self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, respuesta_tutor_saneada)]
         except Exception as e:
-            error_msg = "⚠️ No he podido conectar con Gemma local. Comprueba que Ollama está activo (`ollama run gemma`)."
-            # Si falla, reemplazamos el "Pensando..." por el mensaje de error amigable
+            error_msg = "⚠️ No he podido conectar con LLama local. Asegúrate de que Ollama esté corriendo."
             self.historial_leccion = self.historial_leccion[:-1] + [(pregunta_alumno, error_msg)]
-            print(f"Error en Ollama: {e}")
+            print(f"Error en Ollama HTTPX Stream: {e}")
+            yield
 
         self.cargando_leccion = False
         yield
@@ -453,14 +601,14 @@ class State(rx.State):
     # LÓGICA ACTIVIDAD: CORRECCIÓN DE EJERCICIOS Y PROGRESO (OLLAMA LOCAL)
     # =========================================================================
     async def corregir_actividad(self):
-        """Envía la respuesta del ejercicio a Gemma para que la evalúe pedagógicamente."""
+        """Envía la respuesta del ejercicio a Llama para que la evalúe pedagógicamente."""
         if not self.respuesta_alumno.strip():
             return
 
         self.cargando_correccion = True
         yield
 
-        # 1. Indicamos a Gemma su rol como evaluador socrático y empático
+        # 1. Indicamos a Llama su rol como evaluador socrático y empático
         system_prompt = (
             "Eres un evaluador pedagógico de matemáticas para alumnos de 1º de ESO. "
             "Tu única tarea es corregir la respuesta del alumno para la sección 'Actividad' de la lección.\n\n"
@@ -483,7 +631,7 @@ class State(rx.State):
         )
 
         try:
-            # Llamada asíncrona a tu gemma2:2b local
+            # Llamada asíncrona a tu llama3.2:1b local
             response = await ollama.AsyncClient().chat(
                 model="gemma2:2b",
                 messages=[
