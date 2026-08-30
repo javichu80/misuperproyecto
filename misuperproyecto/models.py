@@ -15,7 +15,14 @@ class Materia(SQLModel, table=True):
     url_demo: str = ""
 
 
-
+class ProgresoLeccion(SQLModel, table=True):
+    """Guarda el progreso real de las lecciones completadas por cada alumno."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lesson_id: str = Field(index=True)  # Ej: 'lesson_01', 'lesson_02'
+    completada: bool = Field(default=True)
+    
+    # 🚀 PROYECCIÓN DE FUTURO: Dejamos el email listo para cuando tengamos base de datos de usuarios
+    usuario_email: str = Field(default="alumno@misuperproyecto.com", index=True)
 
 
 

@@ -23,7 +23,7 @@ def obtener_coleccion_chroma():
     return _CHROMA_COLLECTION
 # =====================================================================
 
-from .models import Materia
+from .models import Materia, ProgresoLeccion
 from dotenv import load_dotenv
 from sqlmodel import select
 from dataclasses import dataclass
@@ -125,6 +125,33 @@ class State(rx.State):
             
             if self.lessons_list:
                 self.progreso = int((len(self.lecciones_completadas) / len(self.lessons_list)) * 100)
+
+             # =========================================================================
+            # 💾 PASO 3: PERSISTENCIA EN SQLITE (INTEGRADO)
+            # =========================================================================
+            try:
+                with rx.session() as session:
+                    # Comprobamos primero si ya existía en la BD para evitar duplicados estériles
+                    existe = session.exec(
+                        select(ProgresoLeccion).where(
+                            ProgresoLeccion.lesson_id == self.selected_lesson,
+                            ProgresoLeccion.usuario_email == "alumno@misuperproyecto.com"
+                        )
+                    ).first()
+                    
+                    if not existe:
+                        nuevo_hito = ProgresoLeccion(
+                            lesson_id=self.selected_lesson,
+                            usuario_email="alumno@misuperproyecto.com",
+                            completada=True
+                        )
+                        session.add(nuevo_hito)
+                        session.commit()
+                        print(f"💾 Guardado progreso en SQLite para: {self.selected_lesson}")
+            except Exception as e:
+                print(f"Error al escribir progreso en SQLite: {e}")
+            # =========================================================================
+
         else:
             self.test_correcto = False
             self.feedback_test = "¡Casi lo tienes! Tu tutor STEM de la derecha te acaba de dejar una pista personalizada para ayudarte a razonar. ¡Lee el chat y vuelve a intentarlo! 💡 [3]"
@@ -315,6 +342,30 @@ class State(rx.State):
         """Inicializa tanto la base de datos de SQLModel como el cargador de Markdown."""
         self.cargar_materias()
         await self.cargar_estructura_lecciones()
+        # 📂 PASO 2: RECUPERACIÓN DEL PROGRESO DE SQLITE
+        try:
+            with rx.session() as session:
+                # Buscamos en la base de datos todas las lecciones completadas por este alumno
+                progreso_db = session.exec(
+                    select(ProgresoLeccion).where(
+                        ProgresoLeccion.usuario_email == "alumno@misuperproyecto.com"
+                    )
+                ).all()
+                
+                # Sincronizamos la variable de UI con los IDs de las lecciones guardadas
+                self.lecciones_completadas = [registro.lesson_id for registro in progreso_db]
+                
+                # Recalculamos el porcentaje de progreso en base a lo recuperado
+                if self.lessons_list:
+                    self.progreso = int((len(self.lecciones_completadas) / len(self.lessons_list)) * 100)
+                else:
+                    self.progreso = 0
+                    
+            print(f"📊 Progreso cargado desde SQLite: {self.lecciones_completadas} ({self.progreso}%)")
+        except Exception as e:
+            print(f"Error al recuperar progreso desde SQLite: {e}")
+
+
 
     def cargar_materias(self):
         """Carga todas las materias existentes en la base de datos."""
