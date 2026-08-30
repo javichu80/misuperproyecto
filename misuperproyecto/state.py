@@ -39,6 +39,9 @@ class Lesson:
     title: str
 
 class State(rx.State):
+
+
+
     # =========================================================================
     # VARIABLES DE UI, AUTENTICACIÓN Y FILTROS
     # =========================================================================
@@ -71,6 +74,8 @@ class State(rx.State):
     historial_leccion: list[tuple[str, str]] = []
     pregunta_leccion: str = ""
     cargando_leccion: bool = False
+     # 🧠 NUEVA MEMORIA: Guarda la última página consultada en este chat de forma persistente
+    pagina_actual: int | None = None
 
     # Navegación del Blueprint pedagógico
     selected_course: str = "matematicas_1eso"
@@ -100,6 +105,45 @@ class State(rx.State):
     test_correcto: bool = False
     feedback_test: str = ""
     feedback_correcto: str =""
+
+    # === VARIABLES PARA LA ESCALABILIDAD DE CURSOS ===
+    curso_seleccionado: str = "1º ESO"  # Curso por defecto del selector
+    tema_abierto: str = ""              # Controla qué acordeón de tema está desplegado
+    
+    # Listado oficial de cursos para el backend
+    lista_cursos: list[str] = [
+        "1º ESO", "2º ESO", "3º ESO", "4º ESO", 
+        "1º Bachillerato", "2º Bachillerato"
+    ]
+
+    async def cambiar_curso_sidebar(self, nuevo_curso: str):
+        """
+        Cambia el curso activo en la barra lateral y recarga 
+        automáticamente su estructura pedagógica desde el disco.
+        """
+        self.curso_seleccionado = nuevo_curso
+        
+        # Mapeamos el nombre visual del desplegable con tus carpetas del backend
+        mapeo_cursos = {
+            "1º ESO": "matematicas_1eso",
+            "2º ESO": "matematicas_2eso",
+            "3º ESO": "matematicas_3eso",
+            "4º ESO": "matematicas_4eso",
+            "1º Bachillerato": "matematicas_1bach",
+            "2º Bachillerato": "matematicas_2bach"
+        }
+        
+        # Actualizamos la carpeta del curso en el estado si existe en el mapeo
+        if nuevo_curso in mapeo_cursos:
+            self.selected_course = mapeo_cursos[nuevo_curso]
+            # Reiniciamos a una ID base por defecto para el nuevo nivel
+            self.selected_lesson = "lesson_01_sistemas_numeracion" 
+            
+        print(f"🎓 Sidebar: Cambiado a {nuevo_curso} -> Carpeta activa: {self.selected_course}")
+        
+        # Forzamos a Reflex a volver a leer el archivo metadata.yaml de la nueva carpeta
+        await self.cargar_estructura_lecciones()
+
 
     def seleccionar_opcion(self, opcion: str):
         """Mapea de forma segura la opción seleccionada por el alumno."""
@@ -335,6 +379,10 @@ class State(rx.State):
             self.mostrar_feedback_test = False
             self.test_correcto = False
             self.feedback_test = ""
+
+            # 🧠 NUEVO: Limpiar la memoria de la página al cambiar de lección
+            self.pagina_actual = None
+
     # =========================================================================
     # EVENTO ON_LOAD COORDINADOR
     # =========================================================================
@@ -487,18 +535,25 @@ class State(rx.State):
                 else:
                     raise KeyError(f"No se encontró la clave del vector. Claves disponibles: {list(res_json.keys())}")
             
-            # --- DETECTOR DE PÁGINAS ---
+            # --- DETECTOR DE PÁGINAS CON MEMORIA INTELIGENTE ---
             filtro_pagina = None
             match_pag = re.search(r"p[áa]g(?:ina)?\s*(\d+)", pregunta_alumno, re.IGNORECASE)
+            
             if match_pag:
+                # El alumno indica explícitamente una página: actualizamos la memoria
                 filtro_pagina = int(match_pag.group(1))
+                self.pagina_actual = filtro_pagina
                 print(f"🎯 Detector: El alumno ha pedido la página física: {filtro_pagina}")
+            elif self.pagina_actual is not None:
+                # El alumno no dice la página, pero usamos la que guardaba el estado de Reflex
+                filtro_pagina = self.pagina_actual
+                print(f"🧠 Memoria Reflex: Manteniendo la página del turno anterior: {filtro_pagina}")
 
             # Realizamos la consulta a ChromaDB
             if filtro_pagina is not None:
                 results = collection.query(
                     query_embeddings=[query_vector],
-                    n_results=1,
+                    n_results=2,  # Subimos a 2 por si la página se dividió en sub-chunks
                     where={"page": filtro_pagina}
                 )
             else:
@@ -506,6 +561,7 @@ class State(rx.State):
                     query_embeddings=[query_vector],
                     n_results=2
                 )
+
             
             # Normalizador de dimensiones seguro (¡tu versión excelente!)
             if results and results.get("documents"):
@@ -539,14 +595,16 @@ class State(rx.State):
         # 2. SYSTEM PROMPT: Pedagogía Socrática + Reglas Estrictas de LaTeX
         # =========================================================================
         system_prompt = (
-            "Eres un tutor de Inteligencia Artificial especializado en STEM para alumnos de 1º de ESO. "
+                  "Eres un tutor de Inteligencia Artificial especializado en STEM para alumnos de 1º de ESO. "
             "Tu objetivo es guiar al estudiante de manera socrática, explicándole paso a paso sin darle la solución directa, "
             "haciendo preguntas de control y usando ejemplos cotidianos para facilitar la comprensión.\n\n"
+            
             "Sigue estas reglas estrictas de conducta pedagógica:\n"
             "1. NUNCA le des la solución directa de los ejercicios o actividades al alumno. "
             "Si te pide un resultado, ofrécele pistas, hazle preguntas guía o divide el problema en partes más sencillas para que él descubra la solución.\n"
             "2. Si el alumno te pregunta algo fuera de tema o del contexto de la lección activa (como preguntas genéricas sobre la Luna), "
             "busca una relación creativa o divertida para reconducir la conversación hacia las matemáticas o hacia el tema de la lección activa.\n\n"
+            
             "REGLAS DE FORMATO MATEMÁTICO OBLIGATORIAS (CALIDAD DE LIBRO DE TEXTO):\n"
             "- NUNCA uses texto plano o barras inclinadas corrientes de teclado para fórmulas (prohibido escribir 'x / y' o '(x/10)').\n"
             "- Usa SIEMPRE sintaxis LaTeX real para representar fracciones, operaciones, potencias y ecuaciones.\n"
@@ -556,7 +614,15 @@ class State(rx.State):
             "\\frac{x}{\\text{Cantidad total}}\n"
             "$$\n"
             "- Para variables o números sencillos dentro de una frase, usa símbolos de dólar simples: $x$ o $y$.\n"
-            "- NUNCA utilices bloques de código con triple comilla (como ```math o ```latex) para envolver las fórmulas."
+            "- NUNCA utilices bloques de código con triple comilla (como ```math o ```latex) para envolver las fórmulas.\n\n"
+            
+            "🚨 REGLA DE ORO ABSOLUTA (ANTI-ALUCINACIÓN Y LÍMITES DE CONTEXTO):\n"
+            "- Tu conocimiento para responder preguntas específicas sobre ejercicios está ESTRICTAMENTE limitado al fragmento de texto del solucionario que te proporciona el sistema.\n"
+            "- Si el alumno te pregunta por un ejercicio, enunciado, pregunta o número de página concretos y esa información NO aparece explícitamente en el texto proporcionado, debes admitirlo con humildad. Di de forma extremadamente educada y empática:\n"
+            "  '¡Vaya! No consigo encontrar ese ejercicio o página exacta en el material de este tema. ¿Podrías escribirme aquí el enunciado o decirme de qué trata el problema? ¡Así podré ayudarte a razonarlo paso a paso! 😊'\n"
+            "- BAJO NINGÚN CONCEPTO te inventes enunciados, datos de problemas, fórmulas o contextos matemáticos ajenos al fragmento (prohibido inventar problemas de trenes, aviones, velocidades o sumas de Gauss si no están escritos en el texto proporcionado).\n"
+            "- NOTA SOBRE NÚMEROS DE PÁGINA: El alumno puede referirse a una página usando el número del visor del PDF (ej: página 3) pero en el texto proporcionado puede venir impreso un número diferente del libro impreso (ej: Página 11). Confía siempre en el contenido matemático del fragmento proporcionado e ignora las discrepancias de numeración."
+            "- Presta especial atención al número de ejercicio solicitado por el alumno. No confundas el ejercicio solicitado con el que esté inmediatamente antes o después en el texto."
         )
 
         # =========================================================================

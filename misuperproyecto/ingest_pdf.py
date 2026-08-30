@@ -8,66 +8,57 @@ import ollama
 # =========================================================================
 # CONFIGURACIÓN DEL PIPELINE DE RAG LOCAL
 # =========================================================================
-PDF_PATH = "Solucionario-Matematicas-1oESO-Anaya-TEMA-1-Los-numeros-naturales.pdf"
+PDF_PATH = "misuperproyecto/Solucionario-Matematicas-1oESO-Anaya-TEMA-1-Los-numeros-naturales.pdf"
 CHROMA_DB_PATH = "/home/javichu/chroma_db"  # Tu ruta absoluta súper segura
 COLLECTION_NAME = "solucionario_anaya_1eso"
 EMBEDDING_MODEL = "all-minilm"  # Tu modelo ligero y compatible
 
 
 def extraer_y_trocear_pdf(pdf_path: str) -> list[dict]:
-    """Extrae el texto de un PDF página a página y crea fragmentos base."""
+    """Extrae el texto de un PDF aplicando limpieza de ruido y solapamiento dinámico."""
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(
             f"❌ No se ha encontrado el archivo PDF en: {pdf_path}\n"
             "Asegúrate de colocar el PDF del solucionario en la raíz de tu proyecto."
         )
 
-    print(f"📖 Leyendo el archivo PDF: {pdf_path}...")
+    print(f"📖 Leyendo y limpiando PDF: {pdf_path}...")
     reader = PdfReader(pdf_path)
+    paginas_texto = []
+
+    # 1. Extracción y Limpieza de Cabeceras/Pies de página
+    for i, page in enumerate(reader.pages):
+        texto_sucio = page.extract_text() or ""
+        
+        # Expresiones regulares para limpiar cabeceras típicas de Anaya y números de página
+        texto_limpio = re.sub(r"©\s*GRUPO\s*ANAYA.*", "", texto_sucio, flags=re.IGNORECASE)
+        texto_limpio = re.sub(r"Matemáticas\s*\d+\.?\s*ESO.*", "", texto_limpio, flags=re.IGNORECASE)
+        texto_limpio = re.sub(r"\b\d+\s*$", "", texto_limpio)  # Quita números de página sueltos al final de línea
+        
+        paginas_texto.append(texto_limpio.strip())
+
     chunks = []
 
-    for index, page in enumerate(reader.pages):
-        page_num = index + 1
-        text = page.extract_text()
-
-        if not text or not text.strip():
-            continue
-
-        text_limpio = re.sub(r"\s+", " ", text).strip()
-
-        # Usamos un tamaño base cómodo de 1000 caracteres
-        max_chars = 1000
-        overlap = 150
+    # 2. Creación de Chunks Limpios por Página (Sin solapamiento para evitar ruido en solucionarios)
+    for idx, texto_pagina in enumerate(paginas_texto):
+        pagina_actual = idx + 1
         
-        if len(text_limpio) <= max_chars:
-            chunks.append({
-                "text": text_limpio,
-                "metadata": {
-                    "page": page_num,
-                    "chunk": 0,
-                    "source": os.path.basename(pdf_path)
-                }
-            })
-        else:
-            inicio = 0
-            chunk_idx = 0
-            while inicio < len(text_limpio):
-                fin = inicio + max_chars
-                fragmento = text_limpio[inicio:fin]
-                chunks.append({
-                    "text": fragmento,
-                    "metadata": {
-                        "page": page_num,
-                        "chunk": chunk_idx,
-                        "source": os.path.basename(pdf_path)
-                    }
-                })
-                inicio += (max_chars - overlap)
-                chunk_idx += 1
+        # En solucionarios estructurados no queremos arrastrar ejercicios de páginas adyacentes
+        texto_final_chunk = texto_pagina
 
-    print(f"✅ Extracción inicial completada. Se han generado {len(chunks)} fragmentos base.")
+        chunks.append({
+            "text": texto_final_chunk,
+            "metadata": {
+                "source": os.path.basename(pdf_path),
+                "page": pagina_actual,
+                "chunk" : 0, # Mantenemos esta línea mágica para contentar a ChromaDB
+                "materia_id": "matematicas_1eso",  # Dejamos la materia lista para el filtro de base de datos
+                "tema": "tema_01"                  # Preparado para indexar múltiples temas sin colisiones
+            }
+        })
+
+    print(f"✅ PDF troceado con éxito en {len(chunks)} fragmentos contextuales (Estancos por página).")
     return chunks
-
 
 def obtener_embedding_con_fallback(texto: str, modelo: str) -> tuple[list[list[float]], list[str]]:
     """Intenta generar el embedding. Si Ollama rechaza el texto por exceder el contexto,

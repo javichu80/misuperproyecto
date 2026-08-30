@@ -52,7 +52,147 @@ def navbar() -> rx.Component:
 # =========================================================================
 # COMPONENTE 2: SIDEBAR DE TEMARIOS REACITVO
 # =========================================================================
+
 def sidebar_lecciones() -> rx.Component:
+    """Sidebar que muestra el índice interactivo dinámico según el curso seleccionado."""
+    return rx.vstack(
+        # --- 1. SELECTOR DE CURSOS ESCALABLE ---
+        rx.vstack(
+            rx.text("Curso Activo:", size="2", color="#CBD5E1", weight="medium"),
+            rx.select.root(
+                rx.select.trigger(
+                    width="100%",
+                    color="white",
+                    background="rgba(255, 255, 255, 0.05)",
+                    border="1px solid rgba(255, 255, 255, 0.15)",
+                ),
+                rx.select.content(
+                    rx.select.group(
+                        rx.foreach(
+                            State.lista_cursos,
+                            lambda c: rx.select.item(c, value=c, color="black")
+                        )
+                    )
+                ),
+                value=State.curso_seleccionado,
+                on_change=State.cambiar_curso_sidebar,
+            ),
+            width="100%",
+            margin_bottom="1em",
+        ),
+
+        # --- 2. PRESERVADO: TU BARRA DE PROGRESO DEL ALUMNO ---
+        rx.vstack(
+            rx.hstack(
+                rx.text("Tu progreso del tema:", size="2", color="#CBD5E1"),
+                rx.text(f"{State.progreso}%", size="2", weight="bold", color="#818CF8"),
+                width="100%",
+                justify="between"
+            ),
+            rx.box(
+                rx.progress(value=State.progreso, width="100%", color_scheme="indigo", border_radius="9999px"),
+                width="100%",
+                background="rgba(255, 255, 255, 0.04)",       
+                border="1px solid rgba(255, 255, 255, 0.12)",   
+                border_radius="9999px",                       
+                padding="3px",                                  
+            ),
+            margin_bottom="1.5em",
+            width="100%"
+        ),
+
+                # --- 3. ACORDEÓN DE TEMAS 100% DINÁMICO Y SEGURO ---
+        rx.scroll_area(
+            rx.accordion.root(
+                # 📚 TEMA 1º ESO: Se oculta por completo mediante CSS si no estás en 1º ESO
+                rx.accordion.item(
+                    header=rx.text("Tema 1: Números Naturales", color="#E2E8F0", size="3", weight="medium"),
+                    content=rx.vstack(
+                        rx.foreach(
+                            State.lessons_list,
+                            lambda lesson: rx.button(
+                                lesson.title,  
+                                on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
+                                width="100%",
+                                padding_y="1em",
+                                padding_x="1em",
+                                color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
+                                variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
+                               
+                                # === TU TRUCO DE ORO INTEGRO ===
+                                style={
+                                    "height": "auto",  
+                                    "justify-content": "start",
+                                    "white-space": "normal", 
+                                    "text-align": "left",  
+                                    "cursor": "pointer",
+                                    "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), 
+                                }
+                            ),
+                        ),
+                        width="100%",
+                        spacing="2",
+                        padding_top="0.5em",
+                    ),
+                    value="tema_1",
+                    # 💡 TRUCO DE ORO: Si es 1º ESO se muestra normal ('block'), si no, desaparece por completo del DOM
+                    display=rx.cond(State.curso_seleccionado == "1º ESO", "block", "none"),
+                ),
+
+                # 📚 TEMA 2º ESO: Solo visible si el curso activo es 2º ESO
+                rx.accordion.item(
+                    header=rx.text("Tema 1: Números Enteros y Fracciones", color="#E2E8F0", size="3", weight="medium"),
+                    content=rx.vstack(
+                        rx.text("Contenido en preparación para 2º ESO... 🚀", size="2", color="#64748B", padding="1em"),
+                        width="100%",
+                    ),
+                    value="tema_1_2eso",
+                    display=rx.cond(State.curso_seleccionado == "2º ESO", "block", "none"),
+                ),
+
+                # 📚 AVISO GENERAL: Un bloque visible solo cuando seleccionas 3º ESO, 4º ESO o Bachilleratos
+                rx.accordion.item(
+                    header=rx.text("Temarios en Desarrollo", color="#64748B", size="3", weight="medium"),
+                    content=rx.vstack(
+                        rx.text("Estamos preparando el material didáctico interactivo y el solucionario RAG para este nivel... 🛠️", size="2", color="#94A3B8", padding="1em"),
+                        width="100%",
+                    ),
+                    value="temas_desarrollo",
+                    display=rx.cond(
+                        (State.curso_seleccionado != "1º ESO") & (State.curso_seleccionado != "2º ESO"), 
+                        "block", 
+                        "none"
+                    ),
+                ),
+
+                type="single",
+                collapsible=True,
+                width="100%",
+            ),
+            height="45vh",  
+            width="100%",
+        ),
+
+
+        # =========================================================================
+        # ESTILOS RESPONSIVOS PARA EL CONTENEDOR (Tus dimensiones e ID originales)
+        # =========================================================================
+        width=["100%", "100%", "280px"],
+        align_items=["center", "center", "stretch"], 
+        height="auto" if ["100%", "100%", "100%"] else "100%", 
+        padding="1.5em",
+        background="rgba(30, 41, 59, 0.45)",
+        backdrop_filter="blur(8px)",
+        border="1px solid rgba(255, 255, 255, 0.08)",
+        box_shadow="0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+        border_radius="16px",
+        margin_bottom=["1.5em", "1.5em", "0"], 
+    )
+
+
+
+
+'''def sidebar_lecciones() -> rx.Component:
     """Sidebar que muestra el índice interactivo del Tema 1."""
     return rx.vstack(
         rx.heading("Tema 1: Números Naturales", size="5", color="#E2E8F0", margin_bottom="1.5em"),
@@ -121,7 +261,7 @@ def sidebar_lecciones() -> rx.Component:
         border_radius="16px",
         margin_bottom=["1.5em", "1.5em", "0"], # Añade separación abajo sólo en móviles
         )
-
+'''
 # =========================================================================
 # COMPONENTE 3: BURBUJAS DE CONVERSACIÓN DE CHAT
 # =========================================================================
