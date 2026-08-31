@@ -85,6 +85,7 @@ class State(rx.State):
     
     # Lista de lecciones tipada para el compilador
     lessons_list: list[Lesson] = []
+    tema_titulo: str = "Cargando tema..."
 
     # --- VARIABLES DE ACTIVIDAD Y PROGRESO (SPRINT 3) ---
     respuesta_alumno: str = ""           # Captura el texto del formulario de entrega
@@ -301,12 +302,23 @@ class State(rx.State):
     # EVENTOS DE NAVEGACIÓN Y CARGA DE CONTENIDOS
     # =========================================================================
     async def cargar_estructura_lecciones(self):
-        """Lee metadata.yaml y carga la lista de lecciones del Tema 1."""
+        """Lee metadata.yaml y carga el título del tema y su lista de lecciones correspondientes."""
         metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
+        
+        # Valores por defecto por si el archivo no existe o está en preparación
+        self.tema_titulo = "Contenido en preparación... 🚀"
+        self.lessons_list = []
+        
         if os.path.exists(metadata_path):
             try:
                 with open(metadata_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
+                    
+                    # 🚀 NUEVO: Leemos tu 'topic_id' y lo formateamos estéticamente
+                    raw_topic_id = data.get("topic_id", "tema_01")
+                    # Reemplazamos guiones por espacios y capitalizamos las palabras
+                    self.tema_titulo = raw_topic_id.replace("_", " ").title()
+                    
                     lessons = data.get("lessons", [])
                     self.lessons_list = [
                         Lesson(lesson_id=l.get("lesson_id"), title=l.get("title"))
@@ -314,75 +326,91 @@ class State(rx.State):
                     ]
             except Exception as e:
                 print(f"Error cargando metadatos: {e}")
+                self.tema_titulo = "Error al cargar temario ⚠️"
         
+        # Cargamos el markdown de la lección seleccionada
         await self.cargar_contenido_leccion(self.selected_lesson)
 
 
     async def cargar_contenido_leccion(self, lesson_id: str):
-            """Cambia la lección activa, lee el archivo Markdown correspondiente y extrae el test dinámico."""
-            self.selected_lesson = lesson_id
-            lesson_file = "lesson_01.md"
-            metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
-            
-            # 1. PRESERVADO: Tu lógica original para buscar el archivo en el metadata.yaml
-            if os.path.exists(metadata_path):
-                with open(metadata_path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f)
-                    for l in data.get("lessons", []):
-                        if l.get("lesson_id") == lesson_id:
-                            lesson_file = l.get("file")
-                            break
+        """Cambia la lección activa, lee el archivo Markdown correspondiente y extrae el test dinámico."""
+        self.selected_lesson = lesson_id
+        lesson_file = "lesson_01.md"
+        metadata_path = f"courses/{self.selected_course}/{self.selected_topic}/metadata.yaml"
+        
+        # 1. PRESERVADO: Tu lógica original para buscar el archivo en el metadata.yaml
+        if os.path.exists(metadata_path):
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                for l in data.get("lessons", []):
+                    if l.get("lesson_id") == lesson_id:
+                        lesson_file = l.get("file")
+                        break
 
-            file_path = f"courses/{self.selected_course}/{self.selected_topic}/{lesson_file}"
-            
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        raw_content = f.read()
+        file_path = f"courses/{self.selected_course}/{self.selected_topic}/{lesson_file}"
+        
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    raw_content = f.read()
+                
+                self.historial_leccion = []
+                
+                # 2. Separar la cabecera del test (Front-Matter) de la teoría (Markdown)
+                import re
+                match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", raw_content, re.DOTALL)
+                
+                if match:
+                    # Extraemos y cargamos el YAML de la cabecera
+                    yaml_data = yaml.safe_load(match.group(1))
                     
-                    self.historial_leccion = []
+                    # 🟢 A) TEORÍA: Mantener el Markdown original INTACTO.
+                    # rx.markdown(..., math=True) se encarga de formatear títulos, listas y KaTeX.
+                    self.lesson_content = match.group(2)
                     
-                    # 2. NUEVO: Separar la cabecera del test (Front-Matter) de la teoría (Markdown)
-                    import re
-                    # Buscamos el patrón de texto que está encerrado entre los primeros triples guiones (---)
-                    match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", raw_content, re.DOTALL)
+                    # Función auxiliar SOLO para sanitizar el string-matching de las preguntas del test
+                    def sanitizar_para_test(text: str) -> str:
+                        if not text:
+                            return ""
+                        return text.replace("\\\\", "\\")
+
+                    # 🟢 B) PREGUNTA DEL TEST
+                    raw_pregunta = yaml_data.get("pregunta_test", "Pregunta de control")
+                    self.pregunta_test = str(raw_pregunta)
                     
-                    if match:
-                        # Extraemos y cargamos el YAML de la cabecera
-                        yaml_data = yaml.safe_load(match.group(1))
-                        # El grupo 2 es todo el texto de la teoría que va después del segundo ---
-                        self.lesson_content = match.group(2)
-                        
-                        # Asignamos las variables del test de forma 100% dinámica
-                        self.pregunta_test = yaml_data.get("pregunta_test", "Pregunta de control")
-                        self.opciones_test = yaml_data.get("opciones_test", [])
-                        self.opcion_correcta = yaml_data.get("opcion_correcta", "")
-                        # --- NUEVO: Extraemos la felicitación personalizada ---
-                        self.feedback_correcto = yaml_data.get(
-                            "feedback_correcto", 
-                            "¡Respuesta Correcta! 🎉 ¡Has comprendido perfectamente el concepto de la lección!"
+                    # 🟢 C) OPCIONES Y OPCIÓN CORRECTA (Ambas pasan por la misma sanitización)
+                    raw_opciones = yaml_data.get("opciones_test", [])
+                    self.opciones_test = [
+                        sanitizar_para_test(str(op)) for op in raw_opciones
+                    ]
+                    
+                    raw_correcta = yaml_data.get("opcion_correcta", "")
+                    self.opcion_correcta = sanitizar_para_test(str(raw_correcta))
+
+                    self.feedback_correcto = yaml_data.get(
+                        "feedback_correcto", 
+                        "¡Respuesta Correcta! 🎉 ¡Has comprendido perfectamente el concepto de la lección!"
                     )
-                    else:
-                        # Si el archivo markdown no tiene cabecera de test, se comporta como antes (solo teoría)
-                        self.lesson_content = raw_content
-                        self.pregunta_test = "Lee atentamente la lección."
-                        self.opciones_test = []
-                        self.opcion_correcta = ""
-                        
-                except Exception as e:
-                    self.lesson_content = f"⚠️ Error al procesar el archivo de la lección: {str(e)}"
-            else:
-                self.lesson_content = f"# Error\nNo se pudo encontrar el archivo de teoría: `{lesson_file}`."
+                else:
+                    # Si no hay cabecera YAML, asignamos el contenido Markdown intacto
+                    self.lesson_content = raw_content
+                    self.pregunta_test = "Lee atentamente la lección."
+                    self.opciones_test = []
+                    self.opcion_correcta = ""
+                    
+            except Exception as e:
+                self.lesson_content = f"⚠️ Error al procesar el archivo de la lección: {str(e)}"
+        else:
+            self.lesson_content = f"# Error\nNo se pudo encontrar el archivo de teoría: `{lesson_file}`."
 
-            # 3. NUEVO: Limpieza de estado al cambiar de lección (Evita que queden respuestas marcadas)
-            self.opcion_seleccionada = ""
-            self.mostrar_feedback_test = False
-            self.test_correcto = False
-            self.feedback_test = ""
+        # 3. PRESERVADO: Limpieza de estado al cambiar de lección
+        self.opcion_seleccionada = ""
+        self.mostrar_feedback_test = False
+        self.test_correcto = False
+        self.feedback_test = ""
 
-            # 🧠 NUEVO: Limpiar la memoria de la página al cambiar de lección
-            self.pagina_actual = None
-
+        # PRESERVADO: Limpiar la memoria de la página al cambiar de lección
+        self.pagina_actual = None
     # =========================================================================
     # EVENTO ON_LOAD COORDINADOR
     # =========================================================================

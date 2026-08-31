@@ -15,7 +15,7 @@ COLOR_TEXTO = "#F8FAFC"
 
 COLOR_TEXTO_SECUNDARIO = "#CBD5E1"
 
-COLOR_BORDE = "rgba(255,255,255)"
+COLOR_BORDE = "rgba(255,255,255,0,08)"
 
 # 2. Estilos comunes reutilizables (DRY: Don't Repeat Yourself)
 estilo_base_tarjeta = {

@@ -52,6 +52,7 @@ def index() -> rx.Component:
                             rx.vstack( # <-- Añadimos un vstack para apilar el texto y el formulario
                                 rx.markdown(
                                     State.lesson_content,
+                                    math=True,
                                     color="#F1F5F9",
                                 ),
                                 seccion_test_hibrido(), # <-- ¡Aquí insertamos el formulario de entrega!

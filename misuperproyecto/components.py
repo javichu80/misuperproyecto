@@ -54,7 +54,7 @@ def navbar() -> rx.Component:
 # =========================================================================
 
 def sidebar_lecciones() -> rx.Component:
-    """Sidebar que muestra el índice interactivo dinámico según el curso seleccionado."""
+    """Sidebar que muestra el índice interactivo dinámico adaptado al curso seleccionado."""
     return rx.vstack(
         # --- 1. SELECTOR DE CURSOS ESCALABLE ---
         rx.vstack(
@@ -101,70 +101,50 @@ def sidebar_lecciones() -> rx.Component:
             width="100%"
         ),
 
-                # --- 3. ACORDEÓN DE TEMAS 100% DINÁMICO Y SEGURO ---
+        # --- 3. ACORDEÓN DE TEMAS 100% DINÁMICO ---
         rx.scroll_area(
             rx.accordion.root(
-                # 📚 TEMA 1º ESO: Se oculta por completo mediante CSS si no estás en 1º ESO
                 rx.accordion.item(
-                    header=rx.text("Tema 1: Números Naturales", color="#E2E8F0", size="3", weight="medium"),
+                    # 🚀 EL CAMBIO CLAVE: Usa el título procesado dinámicamente desde el backend
+                    header=rx.text(State.tema_titulo, color="#E2E8F0", size="3", weight="medium"),
                     content=rx.vstack(
-                        rx.foreach(
-                            State.lessons_list,
-                            lambda lesson: rx.button(
-                                lesson.title,  
-                                on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
+                        # Si hay lecciones disponibles las dibuja; si está vacío muestra el aviso controlado
+                        rx.cond(
+                            State.lessons_list.length() > 0,
+                            rx.vstack(
+                                rx.foreach(
+                                    State.lessons_list,
+                                    lambda lesson: rx.button(
+                                        lesson.title,  
+                                        on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
+                                        width="100%",
+                                        padding_y="1em",
+                                        padding_x="1em",
+                                        color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
+                                        variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
+                                       
+                                        # === TU TRUCO DE ORO INTEGRO ===
+                                        style={
+                                            "height": "auto",  
+                                            "justify-content": "start",
+                                            "white-space": "normal", 
+                                            "text-align": "left",  
+                                            "cursor": "pointer",
+                                            "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), 
+                                        }
+                                    ),
+                                ),
                                 width="100%",
-                                padding_y="1em",
-                                padding_x="1em",
-                                color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
-                                variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
-                               
-                                # === TU TRUCO DE ORO INTEGRO ===
-                                style={
-                                    "height": "auto",  
-                                    "justify-content": "start",
-                                    "white-space": "normal", 
-                                    "text-align": "left",  
-                                    "cursor": "pointer",
-                                    "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), 
-                                }
+                                spacing="2",
                             ),
+                            # Feedback si el curso seleccionado no tiene lecciones aún en el disco duro
+                            rx.text("Estamos preparando el material didáctico interactivo y el solucionario RAG para este nivel... 🛠️", size="2", color="#94A3B8", padding="1em")
                         ),
                         width="100%",
-                        spacing="2",
                         padding_top="0.5em",
                     ),
-                    value="tema_1",
-                    # 💡 TRUCO DE ORO: Si es 1º ESO se muestra normal ('block'), si no, desaparece por completo del DOM
-                    display=rx.cond(State.curso_seleccionado == "1º ESO", "block", "none"),
+                    value="tema_activo",
                 ),
-
-                # 📚 TEMA 2º ESO: Solo visible si el curso activo es 2º ESO
-                rx.accordion.item(
-                    header=rx.text("Tema 1: Números Enteros y Fracciones", color="#E2E8F0", size="3", weight="medium"),
-                    content=rx.vstack(
-                        rx.text("Contenido en preparación para 2º ESO... 🚀", size="2", color="#64748B", padding="1em"),
-                        width="100%",
-                    ),
-                    value="tema_1_2eso",
-                    display=rx.cond(State.curso_seleccionado == "2º ESO", "block", "none"),
-                ),
-
-                # 📚 AVISO GENERAL: Un bloque visible solo cuando seleccionas 3º ESO, 4º ESO o Bachilleratos
-                rx.accordion.item(
-                    header=rx.text("Temarios en Desarrollo", color="#64748B", size="3", weight="medium"),
-                    content=rx.vstack(
-                        rx.text("Estamos preparando el material didáctico interactivo y el solucionario RAG para este nivel... 🛠️", size="2", color="#94A3B8", padding="1em"),
-                        width="100%",
-                    ),
-                    value="temas_desarrollo",
-                    display=rx.cond(
-                        (State.curso_seleccionado != "1º ESO") & (State.curso_seleccionado != "2º ESO"), 
-                        "block", 
-                        "none"
-                    ),
-                ),
-
                 type="single",
                 collapsible=True,
                 width="100%",
@@ -191,77 +171,6 @@ def sidebar_lecciones() -> rx.Component:
 
 
 
-
-'''def sidebar_lecciones() -> rx.Component:
-    """Sidebar que muestra el índice interactivo del Tema 1."""
-    return rx.vstack(
-        rx.heading("Tema 1: Números Naturales", size="5", color="#E2E8F0", margin_bottom="1.5em"),
-        # --- NUEVO: BARRA DE PROGRESO DEL ALUMNO ---
-        rx.vstack(
-            rx.hstack(
-                rx.text("Tu progreso del tema:", size="2", color="#CBD5E1"),
-                rx.text(f"{State.progreso}%", size="2", weight="bold", color="#818CF8"),
-                width="100%",
-                justify="between"
-            ),
-            rx.box(
-                rx.progress(value=State.progreso, width="100%", color_scheme="indigo", border_radius="9999px"),
-                width="100%",
-                background="rgba(255, 255, 255, 0.04)",       # Fondo sutil del carril
-                border="1px solid rgba(255, 255, 255, 0.12)",   # Borde blanco translúcido visible al 0%
-                border_radius="9999px",                       # Formato de píldora redondeada
-                padding="3px",                                  # Pequeño margen para que la barra "flote" dentro   
-            ),
-            margin_bottom="1.5em",
-            width="100%"
-            
-        ),
-        rx.vstack(
-            rx.foreach(
-                State.lessons_list,
-                lambda lesson: rx.button(
-                    lesson.title,  # Acceso por puntos oficial de dataclass
-                    on_click=lambda: State.cargar_contenido_leccion(lesson.lesson_id),
-                    width="100%",
-                    padding_y ="1em",
-                    padding_x ="1em",
-                    color_scheme=rx.cond(State.selected_lesson == lesson.lesson_id, "indigo", "slate"),
-                    variant=rx.cond(State.selected_lesson == lesson.lesson_id, "solid", "ghost"),
-                   
-                    # === TRUCO DE ORO: Evita el desborde de texto en los botones ===
-                    
-                    style = {
-                        "height":"auto",  # Permite al botón crecer verticalmente si hay salto de línea
-                        "justify-content": "start",
-                        "white-space": "normal", # Permite que el texto salte de línea si es largo
-                        "text-align": "left",  # Alineación de texto elegante para lectura
-                        "cursor": "pointer",
-                        "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), # <-- Fuerza contraste
-                    }
-                ),
-            ),
-            width="100%",
-            spacing="2",
-        ),
-        # =========================================================================
-        # ESTILOS RESPONSIVOS PARA EL CONTENEDOR (Móvil vs Escritorio)
-        # =========================================================================
-        # [Móvil, Escritorio] -> 100% en móvil, 280px fijo en pantallas grandes
-        width=["100%", "100%", "280px"],
-        
-        # Centra los elementos en móvil, los alinea a la izquierda en escritorio
-        align_items=["center", "center", "stretch"], 
-        
-        height="auto" if ["100%", "100%", "100%"] else "100%", # Ajuste de altura responsiva
-        padding="1.5em",
-        background="rgba(30, 41, 59, 0.45)",
-        backdrop_filter="blur(8px)",
-        border="1px solid rgba(255, 255, 255, 0.08)",
-        box_shadow="0 8px 32px 0 rgba(0, 0, 0, 0.37)",
-        border_radius="16px",
-        margin_bottom=["1.5em", "1.5em", "0"], # Añade separación abajo sólo en móviles
-        )
-'''
 # =========================================================================
 # COMPONENTE 3: BURBUJAS DE CONVERSACIÓN DE CHAT
 # =========================================================================
@@ -650,12 +559,15 @@ def seccion_test_hibrido() -> rx.Component:
                 spacing="2",
                 align="center",
             ),
-            rx.text(
-                State.pregunta_test,
-                size="2",
-                weight="medium",
-                color="slate",
+            rx.box(
+                rx.markdown(
+                    # 🚀 FIX DE LATEX: Limpia el doble escapado de barras inversas
+                    State.pregunta_test.replace("\\\\", "\\"),
+                    color="white",
+                    math=True,
+                ),
                 margin_bottom="0.5em",
+                width="100%",
             ),
             
             # Muestra los botones de opciones generados de forma dinámica
@@ -663,18 +575,18 @@ def seccion_test_hibrido() -> rx.Component:
                 rx.foreach(
                     State.opciones_test,
                     lambda opcion: rx.button(
-                        opcion,
+                        # Si las opciones contienen LaTeX, también puedes renderizarlas como markdown:
+                        rx.markdown(opcion.replace("\\\\", "\\"), math=True),
                         width="100%",
-                        # El botón cambia a color índigo si el alumno hace clic sobre él
                         color_scheme=rx.cond(State.opcion_seleccionada == opcion, "indigo", "slate"),
                         variant=rx.cond(State.opcion_seleccionada == opcion, "solid", "outline"),
                         on_click=lambda: State.seleccionar_opcion(opcion),
                         style={
-                            "justify-content": "start",
+                            "justifyContent": "start",
                             "cursor": "pointer",
-                            "white-space": "normal",
-                            "text-align": "left",
-                            "padding_y": "1.2em"
+                            "whiteSpace": "normal",
+                            "textAlign": "left",
+                            "paddingY": "1.2em",
                         }
                     )
                 ),
@@ -697,7 +609,7 @@ def seccion_test_hibrido() -> rx.Component:
                 style={"cursor": "pointer"}
             ),
             
-            # Cuadro condicional de feedback rápido (Verde si acierta, Marrón si requiere pista)
+            # Cuadro condicional de feedback rápido
             rx.cond(
                 State.mostrar_feedback_test,
                 rx.box(
@@ -715,14 +627,18 @@ def seccion_test_hibrido() -> rx.Component:
                             spacing="2",
                             align="center"
                         ),
-                        rx.text(State.feedback_test, size="2", color="white"),
+                        rx.markdown(
+                            State.feedback_test.replace("\\\\", "\\"), 
+                            color="white", 
+                            math=True
+                        ),
                         spacing="2",
                         align="start",
                     ),
                     background_color=rx.cond(
                         State.test_correcto,
-                        "#132a13",  # Verde éxito
-                        "#3d2612"   # Marrón cálido para pista
+                        "#132a13",
+                        "#3d2612"
                     ),
                     border=rx.cond(
                         State.test_correcto,
@@ -745,4 +661,3 @@ def seccion_test_hibrido() -> rx.Component:
         border="1px solid #1f2937",
         background_color="#111827",
     )
-
