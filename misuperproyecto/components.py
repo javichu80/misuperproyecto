@@ -130,7 +130,7 @@ def sidebar_lecciones() -> rx.Component:
                                             "white-space": "normal", 
                                             "text-align": "left",  
                                             "cursor": "pointer",
-                                            "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#94A3B8"), 
+                                            "color": rx.cond(State.selected_lesson == lesson.lesson_id, "white", "#DCE2E9"), 
                                         }
                                     ),
                                 ),
@@ -138,7 +138,7 @@ def sidebar_lecciones() -> rx.Component:
                                 spacing="2",
                             ),
                             # Feedback si el curso seleccionado no tiene lecciones aún en el disco duro
-                            rx.text("Estamos preparando el material didáctico interactivo y el solucionario RAG para este nivel... 🛠️", size="2", color="#94A3B8", padding="1em")
+                            rx.text("Estamos preparando el material didáctico interactivo y el solucionario RAG para este nivel... 🛠️", size="2", color="#C9D2DE", padding="1em")
                         ),
                         width="100%",
                         padding_top="0.5em",
@@ -222,7 +222,7 @@ def mensaje_chat(interaccion: tuple[str, str]) -> rx.Component:
 def interfaz_tutor_leccion() -> rx.Component:
     """Cuadro de chat dinámico para la IA de Lección Contextual."""
     return rx.vstack(
-        rx.heading("Tutor STEM Inteligente (Lección)", size="4", color="white"),
+        rx.heading("Tutor STEM ESPECIALIZADO (Lección)", size="4", color="white"),
         rx.scroll_area(
             rx.vstack(
                 rx.foreach(State.historial_leccion, mensaje_chat),
@@ -262,7 +262,7 @@ def interfaz_tutor_leccion() -> rx.Component:
 def interfaz_tutor_ia() -> rx.Component:
     """Cuadro de chat dinámico con historial para consultas generales."""
     return rx.vstack(
-        rx.heading("Tutor STEM Inteligente", size="4", color="black"),
+        rx.heading("Tutor STEM Inteligente GENERAL", size="4", color="white"),
         rx.scroll_area(
             rx.vstack(
                 rx.foreach(State.historial_chat, mensaje_chat),

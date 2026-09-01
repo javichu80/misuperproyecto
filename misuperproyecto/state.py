@@ -199,7 +199,7 @@ class State(rx.State):
 
         else:
             self.test_correcto = False
-            self.feedback_test = "¡Casi lo tienes! Tu tutor STEM de la derecha te acaba de dejar una pista personalizada para ayudarte a razonar. ¡Lee el chat y vuelve a intentarlo! 💡 [3]"
+            self.feedback_test = "¡Casi lo tienes! Tu tutor STEM de la derecha te acaba de dejar una pista personalizada para ayudarte a razonar. ¡Lee el chat y vuelve a intentarlo! 💡"
             
             # ACTIVACIÓN DE LA IA EN SEGUNDO PLANO (Sólo si falla)
             self.cargando_leccion = True
